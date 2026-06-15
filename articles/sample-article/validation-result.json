@@ -1,0 +1,302 @@
+{
+  "ok": true,
+  "generatedAt": "2026-06-15T06:34:39.499Z",
+  "files": {
+    "originalPath": "articles/sample-article/original.html",
+    "rewrittenPath": "articles/sample-article/rewritten.html"
+  },
+  "checks": [
+    {
+      "name": "original_exists",
+      "passed": true,
+      "message": "articles/sample-article/original.html が存在する",
+      "details": {}
+    },
+    {
+      "name": "rewritten_exists",
+      "passed": true,
+      "message": "articles/sample-article/rewritten.html が存在する",
+      "details": {}
+    },
+    {
+      "name": "rewritten_not_empty",
+      "passed": true,
+      "message": "rewritten.html が空ではない",
+      "details": {
+        "bytes": 111565
+      }
+    },
+    {
+      "name": "text_length_not_greatly_reduced",
+      "passed": true,
+      "message": "元記事より文字数が大きく減っていない",
+      "details": {
+        "originalTextLength": 18406,
+        "rewrittenTextLength": 20397,
+        "lengthRatio": 1.108
+      }
+    },
+    {
+      "name": "h2_count_not_greatly_reduced",
+      "passed": true,
+      "message": "H2の数が大きく減っていない",
+      "details": {
+        "originalCount": 10,
+        "rewrittenCount": 10,
+        "minAllowed": 8
+      }
+    },
+    {
+      "name": "h3_count_not_greatly_reduced",
+      "passed": true,
+      "message": "H3の数が大きく減っていない",
+      "details": {
+        "originalCount": 53,
+        "rewrittenCount": 53,
+        "minAllowed": 42
+      }
+    },
+    {
+      "name": "h2_ids_unique",
+      "passed": true,
+      "message": "H2のidが重複していない",
+      "details": {
+        "ids": [
+          "h2-1",
+          "h2-2",
+          "h2-3",
+          "h2-4",
+          "h2-5",
+          "h2-6",
+          "h2-7",
+          "h2-8",
+          "h2-9",
+          "h2-10"
+        ],
+        "duplicates": []
+      }
+    },
+    {
+      "name": "h3_ids_unique",
+      "passed": true,
+      "message": "H3のidが重複していない",
+      "details": {
+        "ids": [
+          "heading-d",
+          "heading-e",
+          "heading-f",
+          "h3-1-4",
+          "h3-1-5",
+          "h3-1-6",
+          "h3-1-7",
+          "h3-1-8",
+          "h3-2-1",
+          "h3-2-2",
+          "h3-2-3",
+          "h3-2-4",
+          "h3-2-5",
+          "h3-2-6",
+          "h3-2-7",
+          "h3-2-8",
+          "h3-2-9",
+          "h3-2-10",
+          "h3-1",
+          "h3-2",
+          "h3-3",
+          "h3-4",
+          "h3-4-1",
+          "h3-4-2",
+          "h3-4-3",
+          "h3-4-4",
+          "h3-4-5",
+          "h3-4-6",
+          "h3-4-7",
+          "h3-5-1",
+          "h3-5-2",
+          "h3-5-3",
+          "h3-5-4",
+          "h3-6-1",
+          "h3-6-2",
+          "h3-6-3",
+          "h3-6-4",
+          "h3-7-1",
+          "h3-7-2",
+          "h3-7-3",
+          "h3-8-1",
+          "h3-8-2",
+          "h3-8-3",
+          "h3-8-4",
+          "h3-8-5",
+          "h3-8-6",
+          "h3-9-1",
+          "h3-9-2",
+          "h3-9-3",
+          "h3-9-4"
+        ],
+        "duplicates": []
+      }
+    },
+    {
+      "name": "wakarukoto_once",
+      "passed": true,
+      "message": "「この記事でわかること」リストが1回だけ設置されている",
+      "details": {
+        "count": 1
+      }
+    },
+    {
+      "name": "html_not_severely_broken",
+      "passed": true,
+      "message": "WordPressに貼り付け可能なHTMLとして大きく崩れていない",
+      "details": {}
+    },
+    {
+      "name": "comparison_table_not_inside_wakarukoto_capbox",
+      "passed": true,
+      "message": "「この記事でわかること」のcapbox内に比較表が入っていない",
+      "details": {
+        "count": 0
+      }
+    },
+    {
+      "name": "empty_h2_h3_sections_not_excessive",
+      "passed": true,
+      "message": "本文のないH2/H3が一定数以上ない",
+      "details": {
+        "count": 0,
+        "headings": []
+      }
+    },
+    {
+      "name": "number_only_mass_generated_headings_absent",
+      "passed": true,
+      "message": "数字だけ違う量産見出しがない",
+      "details": {
+        "groups": []
+      }
+    },
+    {
+      "name": "h3_texts_not_duplicated",
+      "passed": true,
+      "message": "同じH3文言が複数回出ていない",
+      "details": {
+        "duplicates": []
+      }
+    },
+    {
+      "name": "unnatural_japanese_phrases_absent",
+      "passed": true,
+      "message": "不自然な日本語表現がない",
+      "details": {
+        "hits": []
+      }
+    },
+    {
+      "name": "p_tags_not_duplicated",
+      "passed": true,
+      "message": "完全一致するpタグが2回以上ない",
+      "details": {
+        "duplicateCount": 0,
+        "duplicates": []
+      }
+    },
+    {
+      "name": "topic_intro_normalized_p_tags_not_duplicated",
+      "passed": true,
+      "message": "「〇〇については、」を除外した正規化本文が2回以上ない",
+      "details": {
+        "duplicateCount": 0,
+        "duplicates": []
+      }
+    },
+    {
+      "name": "supplement_number_normalized_p_tags_not_duplicated",
+      "passed": true,
+      "message": "「補足ポイント数字：」を除外した正規化本文が2回以上ない",
+      "details": {
+        "duplicateCount": 0,
+        "duplicates": []
+      }
+    },
+    {
+      "name": "generic_safety_text_not_repeated_across_consecutive_h3",
+      "passed": true,
+      "message": "汎用安全文が複数H3に連続していない",
+      "details": {
+        "sequenceCount": 0,
+        "sequences": []
+      }
+    },
+    {
+      "name": "similar_supplements_not_mass_generated",
+      "passed": true,
+      "message": "同一または高類似の補足文が10件以上並んでいない",
+      "details": {
+        "runCount": 0,
+        "runs": []
+      }
+    },
+    {
+      "name": "comparison_table_block_not_duplicated",
+      "passed": true,
+      "message": "comparison-table-block が2つ以上ない",
+      "details": {
+        "count": 1
+      }
+    },
+    {
+      "name": "comparison_table_not_duplicated",
+      "passed": true,
+      "message": "比較表が重複していない",
+      "details": {
+        "count": 1
+      }
+    },
+    {
+      "name": "comparison_table_links_have_target_blank",
+      "passed": true,
+      "message": "比較表内リンクに target=\"_blank\" が入っている",
+      "details": {
+        "linkCount": 9,
+        "missingCount": 0
+      }
+    },
+    {
+      "name": "comparison_table_links_have_rel",
+      "passed": true,
+      "message": "比較表内リンクに rel=\"noopener noreferrer\" が入っている",
+      "details": {
+        "linkCount": 9,
+        "missingCount": 0
+      }
+    },
+    {
+      "name": "comparison_table_has_no_empty_cells",
+      "passed": true,
+      "message": "比較表に空のセルがない",
+      "details": {}
+    },
+    {
+      "name": "comparison_table_fallback_under_half",
+      "passed": true,
+      "message": "比較表の半数以上が「追加確認が必要」ではない",
+      "details": {
+        "fallbackRatios": [
+          {
+            "fallbackCount": 4,
+            "cellCount": 54,
+            "ratio": 0.07407407407407407
+          }
+        ]
+      }
+    },
+    {
+      "name": "comparison_table_has_no_abstract_heading_items",
+      "passed": true,
+      "message": "比較表にサービス名ではない抽象見出しが入っていない",
+      "details": {
+        "abstractItems": []
+      }
+    }
+  ]
+}
