@@ -69,13 +69,10 @@ function countOccurrences(text, phrase) {
 }
 
 const genericSafetyPhrases = [
-  "好意や合意が自動的に生まれるわけではありません",
-  "相手の自由意思を最優先にしましょう",
-  "風俗での接客はあくまで仕事",
-  "相手の生活リズムや仕事への向き合い方",
-  "目先の費用だけではなく",
-  "関係が終わるときの連絡方法",
-  "希望条件を丁寧に確認しましょう",
+  "査定前に洗車だけでなく書類も確認しましょう",
+  "契約前に入金時期とキャンセル条件を確認しましょう",
+  "ローン残債がある場合は事前に申告しましょう",
+  "名義変更や廃車手続きの担当範囲を確認しましょう",
 ];
 
 function collectParagraphTexts(html) {
@@ -232,7 +229,7 @@ function attrIncludes(attrs, name, expected) {
 function likelyNeedsComparisonTable(html) {
   const text = stripHtml(html);
   const h3Count = countHeadings(html, 3);
-  return h3Count >= 2 && /(おすすめ|ランキング|比較|アプリ|サービス|店舗|商品|紹介)/.test(text);
+  return h3Count >= 2 && /(おすすめ|ランキング|比較|買取|査定|サービス|業者|店舗|売却|紹介)/.test(text);
 }
 
 function divBlocksWithClass(html, classPattern) {
@@ -287,7 +284,7 @@ function massGeneratedHeadings(html) {
   const groups = new Map();
   for (const section of headingSections(html)) {
     if (!/[0-9０-９]/u.test(section.text)) continue;
-    if (!/(具体例|ポイント|チェックリスト|使い分け|見直し|安全確認)/u.test(section.text)) continue;
+    if (!/(具体例|ポイント|チェックリスト|使い分け|見直し|確認)/u.test(section.text)) continue;
     const key = normalizedMassHeading(section.text);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(section.text);
@@ -326,7 +323,7 @@ function fallbackRatioInTable(tableHtml) {
 }
 
 function abstractComparisonItems(tableHtml) {
-  const abstractPatterns = [/を選ぶ/u, /を確認/u, /のポイント/u, /チェックリスト/u, /会員数/u, /年齢層/u, /完全無料.*避け/u, /セキュリティ/u, /機能があるか/u, /しっかりしているか/u];
+  const abstractPatterns = [/を選ぶ/u, /を確認/u, /のポイント/u, /チェックリスト/u, /必要書類/u, /手順/u, /注意/u, /流れ/u];
   return tableRows(tableHtml).map((row) => tableCells(row)[0] || "").filter((cell) => abstractPatterns.some((pattern) => pattern.test(cell)));
 }
 
