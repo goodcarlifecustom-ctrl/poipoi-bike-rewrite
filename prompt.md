@@ -1,95 +1,62 @@
-# Codex Cloud用：記事URL一発リライト・WordPress下書き作成指示書
+# Codex Cloud用：バイク買取SEO記事URL一発リライト・WordPress下書き作成指示書
 
-このリポジトリは、Codex CloudでWordPress記事をSEOリライトし、新規下書きとして投稿するためのワークフローです。
+以下の記事URLで、URL一発ワークフローを実行してください。
 
-ユーザーが記事URLを1つ渡したら、確認待ちで停止せず、URL取得からWordPress下書き作成、作業ログ記録まで最後まで実行してください。
+記事URL：
+https://poi-poi.co.jp/bike/〇〇
 
-## 最重要方針
+狙うキーワード：
+記事URL・タイトル・元記事の内容から推定。不明な場合は、バイク買取の検索意図に沿って補完。
 
-- Codex Cloud前提で実行する。
-- Codex CLI前提の説明やローカル実行前提の手順を書かない。
-- `rewrite-plan.md` 作成後に確認待ちで止まらない。
-- 既存の重要なH2/H3を勝手に削除しない。
-- 元記事より情報量を減らさない。
-- 元記事より本文文字数を少なくしない。
-- 検索意図を変えない。
-- WordPressに貼り付け可能なHTMLで作成する。
-- SWELLテーマで崩れにくいHTMLにする。
-- WordPressの既存公開記事は直接更新しない。
-- WordPressには必ず新規下書きとして投稿する。
-- `.env` や認証情報は作成・編集・コミットしない。
-- WordPressユーザー名、アプリケーションパスワード、認証情報をログや作業メモに出力しない。
+関連キーワード：
+記事URL・タイトル・元記事の内容から推定。不明な場合は、バイク 買取、バイク 査定、バイク 売る、バイク買取 おすすめ、バイク買取 相場、出張買取、一括査定、高く売る、必要書類、廃車手続き、名義変更、原付 買取、不動車 買取、事故車 買取、カスタム車 買取などを補完。
 
-## 使用する制御ファイル
+## リライト方針
 
-作業開始前に、必ず以下を読んでください。
+* AGENTS.md と prompt.md のURL一発ワークフローに従う。
+* 記事URLから元記事HTMLを取得する。
+* 既存 original.html のフォールバックは使わない。
+* URL取得またはWordPress REST API取得の成功を確認する。
+* 元記事の重要なH2/H3は勝手に削除しない。
+* 元記事より本文文字数・情報量を減らさない。
+* バイク買取の検索意図に合わせて、買取業者のおすすめ、費用感、メリット、デメリット、注意点、査定前の準備を整理する。
+* アフィリエイト記事として、読者が自然におすすめサービス・査定依頼へ進めるCV導線を意識する。
+* 必要に応じて比較表、メリット・デメリット表、注意点リスト、FAQを追加する。
+* 外部リンクは rules/external-link-rule.md の最新ルールに従って追加する。
+* 公的機関、法令、消費者保護、個人情報保護、安全対策に関する信頼できる外部リンクを自然な箇所に追加する。
+* 外部リンクは見出し内には設置しない。
+* 外部リンクには target="_blank" と rel="noopener noreferrer" を必ず付ける。
+* rules/decoration-rule.md に従って、SWELL向けの装飾を適用する。
+* WordPressには既存公開記事を更新せず、新規下書きとして作成する。
+* 認証情報の値そのものは絶対に出力しない。
+* .env と node_modules/ は絶対にコミットしない。
 
-- `rules/` 配下のすべてのルールファイル
-- `articles/sample-article/input.md`
+## 必ず実行するコマンド
 
-リライト内容は主に以下で制御します。
+1. `node scripts/import-original-from-url.mjs "<記事URL>"`
+2. `node scripts/validate-rewritten.mjs`
+3. `node scripts/create-wordpress-draft.mjs`
 
-- リライト方針: `rules/rewrite-rule.md` と `articles/sample-article/input.md`
-- 外部リンク方針: `rules/external-link-rule.md`
-- 比較表方針: `rules/comparison-table-rule.md`
-- SWELL装飾方針: `rules/decoration-rule.md`
+## 成功条件
 
-## URL一発ワークフロー
+* URL取得：成功
+* rewritten.html作成：成功
+* HTML検証：成功
+* WordPress新規下書き作成：成功
+* WordPress下書き本文：あり
+* wordpress-draft.json に下書きID、編集URL、確認可能URL、投稿前本文文字数、投稿後本文文字数が保存されている
+* change-log.md にURL取得結果、リライト内容、外部リンク追加箇所、検証結果、WordPress下書き作成結果が記録されている
+* 既存公開記事は更新していない
 
-ユーザー指示に記事URLが含まれる場合、以下を順番に最後まで実行してください。
+## 最後のSummaryで明記すること
 
-1. `rules/` 配下をすべて読む。比較表作成時は必ず `rules/comparison-table-rule.md` を読む。
-2. `articles/sample-article/input.md` を読む。
-3. ユーザー指示内の記事URLを取得する。
-4. `node scripts/import-original-from-url.mjs "<記事URL>"` を実行し、`articles/sample-article/original.html` を作成する。
-5. `articles/sample-article/original.html` を分析し、検索意図、既存H2/H3、残すべき重要見出し、不足情報を確認する。
-6. `articles/sample-article/rewrite-plan.md` を作成する。
-7. 確認待ちで止まらず、続けて `articles/sample-article/rewritten.html` を作成する。
-8. リライト後・外部リンク挿入前・装飾前に必ず `rules/comparison-table-rule.md` を読み、`node scripts/build-comparison-table.mjs articles/sample-article` を実行して、必要に応じて比較表を自動作成・挿入する。
-9. 比較表作成後・装飾前に必ず `rules/external-link-rule.md` を読み直し、その内容に従い、公的機関・公式サイト・信頼できる情報源への外部リンクを必要な箇所にだけ自然に追加する。
-10. `rules/decoration-rule.md` に従い、SWELL向けにHTML装飾を適用する。装飾工程内で外部リンクを調整する場合も、必ず `rules/external-link-rule.md` を再確認し、見出し内にリンクを設置しない。
-11. `node scripts/validate-rewritten.mjs` を実行してHTMLを検証する。
-12. WordPress認証情報が環境変数で設定されている場合、`node scripts/create-wordpress-draft.mjs` を実行し、WordPressへ新規下書きを作成する。認証情報がない場合は投稿実行のみスキップする。
-13. `articles/sample-article/change-log.md` に、変更内容、比較表の作成・未作成理由、外部リンク追加箇所、検証結果、WordPress下書きURLまたは投稿スキップ理由を記録する.
-
-## rewrite-plan.md に含める内容
-
-- 元記事の検索意図
-- 現在のH2/H3構成
-- 絶対に残すべきH2/H3
-- 削除してはいけない見出し
-- 追加した方がよいH2/H3
-- 情報が不足している箇所
-- 内部リンク候補
-- 公的・信頼性のある外部リンク候補
-- アフィリエイト導線の改善案
-- SWELL装飾の改善案
-- リライト時の注意点
-
-## rewritten.html 作成ルール
-
-- 記事本文のみをHTMLで作成する。
-- 不要な説明文や作業メモを入れない。
-- コードブロックで囲まず、WordPressに貼り付け可能なHTMLをそのまま保存する。
-- H2/H3/H4階層を崩さない。
-- 既存の重要見出しは、検索意図に合う形で残す・補強する。
-- 必要に応じて比較表、箇条書き、FAQ、注意点、メリット・デメリット、利用手順を追加する。比較表は `rules/comparison-table-rule.md` に従い、手動貼り付けではなく取得済みHTMLから自動生成する。
-- 外部リンクは読者の安全性・信頼性・判断材料になる箇所へ自然に追加し、追加箇所を `change-log.md` に記録する。
-- 装飾は過剰にせず、SWELLで崩れにくいシンプルなHTMLにする。
-
-## WordPress下書き作成
-
-- `scripts/create-wordpress-draft.mjs` は `articles/sample-article/rewritten.html` を読み込み、WordPress REST APIへ `status: "draft"` で新規投稿する。
-- 既存記事は更新しない。
-- 認証情報は環境変数から読む。
-- 投稿結果は `articles/sample-article/wordpress-draft.json` に保存する。
-- 下書きID、編集URL、公開プレビューに使えるURLが取得できる場合は `change-log.md` に記録する。
-
-## 品質ガード（比較表・見出し・日本語）
-
-- 比較表は `rules/comparison-table-rule.md` に従い、「この記事でわかること」のcapbox内には入れない。
-- 既存比較表がある場合は重複追加しない。
-- 比較表候補はおすすめ・ランキング・サービス紹介系H2配下のサービス名、アプリ名、商品名、店舗名に限定する。
-- 選び方、注意点、FAQ、まとめ、方法、手順、チェックリスト系のH3は比較表に入れない。
-- 本文のないH2/H3、数字だけ違う量産見出し、同じH3の繰り返し、文字数稼ぎの見出し追加は禁止する。
-- 「サービスサービス」「必要ことです」「注意ことです」「重要ことです」などの不自然な日本語や同一段落の繰り返しを出力しない。
+* URL取得：成功 / 失敗
+* rewritten.html作成：成功 / 失敗
+* rewritten.html文字数
+* HTML検証：成功 / 失敗
+* WordPress下書き作成：成功 / 失敗
+* WordPress下書き本文：あり / なし
+* 下書きID
+* 編集URL
+* 確認可能URL
+* 外部リンクルール適用：成功 / 失敗

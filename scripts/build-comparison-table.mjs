@@ -10,12 +10,12 @@ const originalPath = path.join(ARTICLE_DIR, "original.html");
 const resultPath = path.join(ARTICLE_DIR, "comparison-table.json");
 const changeLogPath = path.join(ARTICLE_DIR, "change-log.md");
 
-const includeKeywords = ["おすすめ", "ランキング", "比較", "アプリ", "サービス", "店舗", "商品", "紹介", "人気", "厳選", "ベスト", "人気順"];
-const excludeKeywords = ["faq", "よくある質問", "質問", "まとめ", "注意点", "注意", "デメリット", "目次", "この記事でわかること", "選び方", "方法", "手順", "チェックリスト", "ポイント", "確認", "避け", "安全", "使い方", "リスク"];
-const excludedHeadingPatterns = [/を選ぶ/u, /を確認/u, /のポイント/u, /チェックリスト/u, /方法/u, /手順/u, /注意/u, /避け/u, /安全/u, /会員数/u, /年齢層/u, /機能があるか/u, /しっかりしているか/u];
-const serviceNameHints = ["アプリ", "サービス", "サイト", "公式", "店", "店舗", "サロン", "商品", "プラン", "with", "pairs", "tinder", "タップル", "pcmax", "ハッピーメール", "ワクワクメール"];
-const serviceKeywords = ["アプリ", "出会い", "サービス", "サイト", "公式", "登録", "料金", "会員"];
-const shopKeywords = ["店舗", "スポット", "エリア", "住所", "アクセス", "場所", "店", "サロン"];
+const includeKeywords = ["おすすめ", "ランキング", "比較", "買取", "査定", "サービス", "業者", "店舗", "店", "出張", "一括査定", "地域", "車種", "売却", "紹介", "人気", "厳選", "ベスト", "一覧"];
+const excludeKeywords = ["faq", "よくある質問", "質問", "まとめ", "注意点", "注意", "デメリット", "目次", "この記事でわかること", "選び方", "方法", "手順", "チェックリスト", "ポイント", "確認", "避け", "使い方", "リスク", "必要書類", "流れ"];
+const excludedHeadingPatterns = [/を選ぶ/u, /を確認/u, /のポイント/u, /チェックリスト/u, /方法/u, /手順/u, /注意/u, /避け/u, /必要書類/u, /流れ/u, /費用を抑える/u];
+const serviceNameHints = ["買取", "査定", "サービス", "業者", "バイク", "オートバイ", "出張", "一括査定", "店", "店舗", "公式", "センター", "ランド", "ワン", "MAX", "原付", "旧車", "不動車", "事故車"];
+const serviceKeywords = ["バイク", "買取", "査定", "売却", "出張", "一括査定", "サービス", "業者", "公式", "費用", "相場"];
+const shopKeywords = ["店舗", "エリア", "地域", "住所", "アクセス", "場所", "店", "持ち込み"];
 
 async function exists(filePath) {
   try {
@@ -92,7 +92,7 @@ function contextIsRelevant(text) {
 function parentIsComparisonSource(parentH2) {
   if (!parentH2) return false;
   if (excludeKeywords.some((keyword) => parentH2.toLowerCase().includes(keyword))) return false;
-  return /(おすすめ|ランキング|比較|人気|厳選|紹介|ベスト|一覧)/u.test(parentH2);
+  return /(おすすめ|ランキング|比較|人気|厳選|紹介|ベスト|一覧|買取業者|査定サービス|売却方法|出張買取|一括査定)/u.test(parentH2);
 }
 
 function looksLikeServiceName(text) {
@@ -150,10 +150,10 @@ function extractCandidates(html) {
     if (!looksLikeServiceName(section.text) && !link) continue;
     candidates.push({
       name: section.text,
-      feature: extractSentence(bodyText, ["特徴", "メリット", "おすすめ", "強み", "人気", "便利"]),
-      price: extractSentence(bodyText, ["料金", "費用", "無料", "有料", "円", "ポイント", "月額", "価格"]),
-      suitableFor: extractSentence(bodyText, ["向いて", "おすすめ", "人", "初心者", "利用", "選びたい"]),
-      caution: extractSentence(bodyText, ["注意", "デメリット", "ただし", "一方", "確認", "リスク"]),
+      feature: extractSentence(bodyText, ["特徴", "メリット", "おすすめ", "強み", "高価買取", "出張", "査定", "対応"]),
+      price: extractSentence(bodyText, ["料金", "費用", "無料", "手数料", "査定料", "出張料", "キャンセル", "円", "価格"]),
+      suitableFor: extractSentence(bodyText, ["向いて", "おすすめ", "人", "売りたい", "高く", "不動車", "事故車", "原付", "カスタム"]),
+      caution: extractSentence(bodyText, ["注意", "デメリット", "ただし", "一方", "確認", "トラブル", "契約"]),
       link,
     });
   }
@@ -172,12 +172,12 @@ function extractCandidates(html) {
 function detectColumns(html) {
   const text = stripTags(html);
   if (serviceKeywords.some((keyword) => text.includes(keyword))) {
-    return ["サービス名", "特徴", "料金・費用感", "向いている人", "注意点", "公式サイト・詳細"];
+    return ["サービス名", "特徴", "手数料・費用感", "おすすめな人", "注意点", "公式サイト・詳細"];
   }
   if (shopKeywords.some((keyword) => text.includes(keyword))) {
-    return ["名称", "特徴", "エリア", "向いている人", "注意点", "公式サイト・詳細"];
+    return ["名称", "特徴", "対応エリア", "おすすめな人", "注意点", "公式サイト・詳細"];
   }
-  return ["比較項目", "特徴", "メリット", "注意点", "向いている人", "詳細"];
+  return ["比較項目", "特徴", "メリット", "注意点", "おすすめな人", "詳細"];
 }
 
 function buildTable(candidates, columns) {
@@ -186,7 +186,7 @@ function buildTable(candidates, columns) {
     const linkCell = candidate.link
       ? `<a href="${escapeHtml(candidate.link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(candidate.link.label || "公式サイト")}</a>`
       : FALLBACK;
-    const third = columns[2] === "エリア" || columns[2] === "メリット" ? candidate.feature : candidate.price;
+    const third = columns[2] === "対応エリア" || columns[2] === "メリット" ? candidate.feature : candidate.price;
     return `      <tr>\n        <td><strong>${escapeHtml(candidate.name)}</strong></td>\n        <td>${escapeHtml(candidate.feature)}</td>\n        <td>${escapeHtml(third)}</td>\n        <td>${escapeHtml(candidate.suitableFor)}</td>\n        <td>${escapeHtml(candidate.caution)}</td>\n        <td>${linkCell}</td>\n      </tr>`;
   }).join("\n");
 
@@ -229,7 +229,7 @@ function findInsertion(html) {
   const capboxEnd = findCapboxEndAfterWakaru(html);
   if (capboxEnd !== null) return { index: capboxEnd, label: "「この記事でわかること」capboxの直後" };
 
-  const recommendH2 = html.match(/<h2\b[^>]*>[\s\S]*?(おすすめ|ランキング)[\s\S]*?<\/h2>/i);
+  const recommendH2 = html.match(/<h2\b[^>]*>[\s\S]*?(おすすめ|ランキング|買取業者|査定サービス)[\s\S]*?<\/h2>/i);
   if (recommendH2?.index !== undefined) return { index: recommendH2.index, label: "おすすめ・ランキング系H2の直前" };
 
   const compareH2 = html.match(/<h2\b[^>]*>[\s\S]*?(比較)[\s\S]*?<\/h2>/i);

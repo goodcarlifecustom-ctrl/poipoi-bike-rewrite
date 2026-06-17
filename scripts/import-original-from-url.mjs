@@ -9,7 +9,7 @@
  * 既存の prompt.md / rules / rewrite-plan.md / rewritten.html は一切変更しない。
  *
  * 使い方:
- * node scripts/import-original-from-url.mjs "https://www.atarijo.com/media/sapporo-sexfriend/"
+ * node scripts/import-original-from-url.mjs "https://poi-poi.co.jp/bike/"
  */
 
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -128,7 +128,7 @@ const outputPath = process.argv[3] || "articles/sample-article/original.html";
 if (!sourceUrl) {
   console.error("URLを指定してください。");
   console.error(
-    '例: node scripts/import-original-from-url.mjs "https://www.atarijo.com/media/sapporo-sexfriend/"'
+    '例: node scripts/import-original-from-url.mjs "https://poi-poi.co.jp/bike/"'
   );
   process.exit(1);
 }
@@ -142,7 +142,7 @@ try {
 }
 
 const userAgent =
-  "Mozilla/5.0 (compatible; ArticleImporter/1.0; +https://www.atarijo.com/)";
+  "Mozilla/5.0 (compatible; ArticleImporter/1.0; +https://poi-poi.co.jp/bike/)";
 
 async function fetchText(url, accept = "text/html", extraHeaders = {}) {
   const headers = {
