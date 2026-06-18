@@ -3,3 +3,11 @@
 !.env.example
 
 articles/**/original.backup-*.html
+
+# Generated article pipeline reports/previews
+articles/**/decoration-report.json
+articles/**/decoration-run-report.json
+articles/**/decoration-validation-report.json
+articles/**/validation-result.json
+articles/**/rewritten.decorated.html
+articles/**/.rewritten.*.tmp

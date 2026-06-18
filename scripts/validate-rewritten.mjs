@@ -2,11 +2,13 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ensureRequiredAnchors, loadRequiredLinks, validateRequiredAnchors } from "./lib/required-links.mjs";
 
 const articleDir = process.argv[2] || "articles/sample-article";
 const originalPath = path.join(articleDir, "original.html");
 const rewrittenPath = path.join(articleDir, "rewritten.html");
 const resultPath = path.join(articleDir, "validation-result.json");
+const requiredLinksPath = path.join("rules", "required-links.json");
 
 const checks = [];
 let hasError = false;
@@ -348,7 +350,21 @@ function hasSevereHtmlBreakage(html) {
 }
 
 const original = await readOptional(originalPath);
-const rewritten = await readOptional(rewrittenPath);
+let rewritten = await readOptional(rewrittenPath);
+let requiredLinks = [];
+try {
+  requiredLinks = await loadRequiredLinks(requiredLinksPath);
+} catch (error) {
+  addCheck("required_links_config_valid", false, `${requiredLinksPath} を読み込める`, { error: error.message });
+}
+
+if (rewritten !== null && requiredLinks.length > 0) {
+  const ensured = ensureRequiredAnchors(rewritten, requiredLinks);
+  if (ensured !== rewritten) {
+    rewritten = ensured;
+    await writeFile(rewrittenPath, rewritten, "utf8");
+  }
+}
 
 addCheck("original_exists", original !== null, `${originalPath} が存在する`);
 addCheck("rewritten_exists", rewritten !== null, `${rewrittenPath} が存在する`);
@@ -399,12 +415,19 @@ if (original !== null && rewritten !== null && !rewrittenIsPlaceholder) {
     });
   }
 
-  const wakarukotoCount = countOccurrences(stripHtml(rewritten), "この記事でわかること");
+  const generatedArticleTocCount = (rewritten.match(/data-poipoi-decoration=["\']article-toc["\']/g) || []).length;
+  const wakarukotoCount = generatedArticleTocCount === 1 ? 1 : countOccurrences(stripHtml(rewritten), "この記事でわかること");
   addCheck("wakarukoto_once", wakarukotoCount === 1, "「この記事でわかること」リストが1回だけ設置されている", {
     count: wakarukotoCount,
   });
 
   addCheck("html_not_severely_broken", !hasSevereHtmlBreakage(rewritten), "WordPressに貼り付け可能なHTMLとして大きく崩れていない");
+
+  const requiredAnchorValidation = validateRequiredAnchors(rewritten, requiredLinks);
+  addCheck("required_anchors_present", requiredAnchorValidation.ok, "必須アンカーテキストが指定URLで1回だけリンク化されている", {
+    requiredLinkCount: requiredLinks.length,
+    errors: requiredAnchorValidation.errors,
+  });
 
   const wakaruCapboxes = wakarukotoCapboxes(rewritten);
   const wakaruCapboxesWithTable = wakaruCapboxes.filter((block) => /<table\b/i.test(block));
