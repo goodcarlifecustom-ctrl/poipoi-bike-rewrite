@@ -4,9 +4,17 @@
     "validate": "node scripts/validate-rewritten.mjs",
     "table": "node scripts/build-comparison-table.mjs",
     "draft": "node scripts/create-wordpress-draft.mjs",
-    "cleanup-links": "node scripts/cleanup-external-link-bloat.mjs"
+    "cleanup-links": "node scripts/cleanup-external-link-bloat.mjs",
+    "test": "node --test",
+    "ensure-links": "node scripts/ensure-required-anchors.mjs",
+    "decorate": "node scripts/decorate-rewritten.mjs",
+    "validate:decorations": "node scripts/validate-decorations.mjs",
+    "finalize": "node scripts/finalize-article.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "parse5": "^7.3.0"
   }
 }

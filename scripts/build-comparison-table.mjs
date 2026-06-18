@@ -180,11 +180,18 @@ function detectColumns(html) {
   return ["比較項目", "特徴", "メリット", "注意点", "おすすめな人", "詳細"];
 }
 
+function detailLinkFor(candidate) {
+  const href = candidate.detailUrl || candidate.link?.href;
+  if (!href) return null;
+  return { href, label: candidate.detailAnchor || candidate.link?.label || "公式情報で確認" };
+}
+
 function buildTable(candidates, columns) {
   const header = columns.map((column) => `        <th style="width: 150px;">${escapeHtml(column)}</th>`).join("\n");
   const rows = candidates.map((candidate) => {
-    const linkCell = candidate.link
-      ? `<a href="${escapeHtml(candidate.link.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(candidate.link.label || "公式サイト")}</a>`
+    const detailLink = detailLinkFor(candidate);
+    const linkCell = detailLink
+      ? `<a href="${escapeHtml(detailLink.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(detailLink.label || "公式情報で確認")}</a>`
       : FALLBACK;
     const third = columns[2] === "対応エリア" || columns[2] === "メリット" ? candidate.feature : candidate.price;
     return `      <tr>\n        <td><strong>${escapeHtml(candidate.name)}</strong></td>\n        <td>${escapeHtml(candidate.feature)}</td>\n        <td>${escapeHtml(third)}</td>\n        <td>${escapeHtml(candidate.suitableFor)}</td>\n        <td>${escapeHtml(candidate.caution)}</td>\n        <td>${linkCell}</td>\n      </tr>`;

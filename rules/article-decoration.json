@@ -1,0 +1,21 @@
+{
+  "articleTocTitle": "この記事でわかること",
+  "sectionIndexes": [
+    { "h2Text": "バイク買取で高く売るコツ", "title": "この章でわかること", "required": false }
+  ],
+  "contentLists": [
+    { "selector": "ul.content-list", "title": "ポイント一覧", "required": false }
+  ],
+  "paragraph": {
+    "maxChars": 180,
+    "maxSentences": 4,
+    "targetSentencesPerParagraph": 2,
+    "shortParagraphChars": 18,
+    "shortParagraphRun": 4
+  },
+  "markers": {
+    "maxPerSection": 2,
+    "positiveKeywords": ["おすすめ", "高価買取", "無料", "メリット", "査定"],
+    "negativeKeywords": ["注意", "デメリット", "トラブル", "確認", "キャンセル"]
+  }
+}
