@@ -1,0 +1,107 @@
+name: poipoi-bike-create
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_keyword:
+        description: 新規記事のメインキーワード
+        required: true
+        default: "150cc バイク おすすめ"
+      gsc_lookback_days:
+        description: Search Console取得日数
+        required: true
+        default: "90"
+
+concurrency:
+  group: poipoi-bike-create-${{ github.event.inputs.target_keyword }}
+  cancel-in-progress: false
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_KEYWORD: ${{ github.event.inputs.target_keyword }}
+      GSC_LOOKBACK_DAYS: ${{ github.event.inputs.gsc_lookback_days }}
+      GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL }}
+      WP_BASE_URL: ${{ secrets.WP_BASE_URL || vars.WP_BASE_URL }}
+      WP_USERNAME: ${{ secrets.WP_USERNAME }}
+      WP_APPLICATION_PASSWORD: ${{ secrets.WP_APPLICATION_PASSWORD }}
+      ARTICLE_DIR: articles/150cc-bike-osusume
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.jsセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Search Consoleキーワードデータ取得
+        run: node scripts/fetch-gsc-keyword-data.mjs
+
+      - name: 既存記事・競合候補の確認
+        run: |
+          mkdir -p articles/150cc-bike-osusume
+          {
+            echo "# 既存記事・競合候補の確認"
+            echo
+            echo "## リポジトリ内候補"
+            find articles -maxdepth 3 -type f \( -name '*.html' -o -name '*.md' -o -name '*.json' \) -print | sort | sed 's/^/- /'
+            echo
+            echo "Search Consoleの関連ページは gsc-data/150cc-bike-osusume/search-console.md を参照。"
+          } > articles/150cc-bike-osusume/cannibalization-scan.md
+
+      - name: 記事作成
+        run: node scripts/create-new-article.mjs
+
+      - name: 記事検証
+        run: |
+          test -s articles/150cc-bike-osusume/article.html
+          test -s articles/150cc-bike-osusume/metadata.json
+          node -e 'const fs=require("fs"); const m=JSON.parse(fs.readFileSync("articles/150cc-bike-osusume/metadata.json","utf8")); if(m.status!=="draft") throw new Error("metadata status must be draft"); const html=fs.readFileSync("articles/150cc-bike-osusume/article.html","utf8"); if(/<h1[\s>]/i.test(html)) throw new Error("article.html must not include h1"); if(!/<h2[\s>]/i.test(html)) throw new Error("article h2 missing");'
+
+      - name: WordPress下書き作成
+        run: node scripts/create-wordpress-draft.mjs
+
+      - name: WordPress下書き状態の再確認
+        run: |
+          node -e 'const fs=require("fs"); const p="articles/150cc-bike-osusume/wordpress-draft-result.json"; const r=JSON.parse(fs.readFileSync(p,"utf8")); if(r.status!=="draft") throw new Error("WordPress status is not draft");'
+
+      - name: GitHub Actions Summary
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          function readJson(p){ try { return JSON.parse(fs.readFileSync(p,'utf8')); } catch { return null; } }
+          function text(p){ try { return fs.readFileSync(p,'utf8'); } catch { return ''; } }
+          const gsc = readJson('gsc-data/150cc-bike-osusume/request-summary.json');
+          const rows = readJson('gsc-data/150cc-bike-osusume/search-console-rows.json');
+          const meta = readJson('articles/150cc-bike-osusume/metadata.json');
+          const wp = readJson('articles/150cc-bike-osusume/wordpress-draft-result.json');
+          const articleText = text('articles/150cc-bike-osusume/article.html').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+          const top = rows?.views?.topImpressions?.slice(0,5).map(r=>r.query).join('、') || '';
+          const pages = rows?.views?.relatedPages?.slice(0,5).map(r=>r.page).join('、') || '';
+          const summary = `# 150cc バイク おすすめ 記事作成結果\n\n## Search Console\n\n- 取得成功 / 失敗: ${gsc?.ok ? '取得成功' : '失敗'}\n- 取得期間: ${gsc?.startDate || ''}〜${gsc?.endDate || ''}\n- API呼び出し回数: ${gsc?.apiCallCount || 0}\n- 厳密条件の行数: ${gsc?.conditionCounts?.A || 0}\n- 中程度条件の行数: ${gsc?.conditionCounts?.B || 0}\n- 広い条件の行数: ${gsc?.conditionCounts?.C || 0}\n- 表示回数上位クエリ: ${top || '0件'}\n- 関連する既存ページ: ${pages || '0件'}\n\n## 記事\n\n- タイトル: ${meta?.title || ''}\n- スラッグ: ${meta?.slug || ''}\n- 文字数: ${articleText.length}\n- 使用した主な検索クエリ: ${top || 'Search Console取得0件のため基本キーワードを使用'}\n\n## WordPress\n\n- 作成 / 更新: ${wp?.action || '未実行'}\n- post ID: ${wp?.postId || ''}\n- status: ${wp?.status || ''}\n- WordPress編集URL: ${wp?.editUrl || ''}\n`;
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          NODE
+
+      - name: レポートと成果物のアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 150cc-bike-osusume-create-artifacts
+          if-no-files-found: warn
+          path: |
+            gsc-data/150cc-bike-osusume/search-console.md
+            gsc-data/150cc-bike-osusume/request-summary.json
+            gsc-data/150cc-bike-osusume/search-console-rows.json
+            articles/150cc-bike-osusume/article.html
+            articles/150cc-bike-osusume/metadata.json
+            articles/150cc-bike-osusume/sources.md
+            articles/150cc-bike-osusume/check-report.md
+            articles/150cc-bike-osusume/wordpress-draft-result.json

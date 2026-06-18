@@ -4,9 +4,15 @@
     "validate": "node scripts/validate-rewritten.mjs",
     "table": "node scripts/build-comparison-table.mjs",
     "draft": "node scripts/create-wordpress-draft.mjs",
-    "cleanup-links": "node scripts/cleanup-external-link-bloat.mjs"
+    "cleanup-links": "node scripts/cleanup-external-link-bloat.mjs",
+    "gsc:keyword": "node scripts/fetch-gsc-keyword-data.mjs",
+    "create:article": "node scripts/create-new-article.mjs",
+    "test:new-article": "node scripts/test-new-article-workflow.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
   }
 }
