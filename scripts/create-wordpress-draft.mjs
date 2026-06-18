@@ -3,12 +3,12 @@
 import { mkdir, readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const articleDir = "articles/sample-article";
+const articleDir = process.argv[2] || process.env.ARTICLE_DIR || "articles/sample-article";
 const rewrittenPath = path.join(articleDir, "rewritten.html");
 const inputPath = path.join(articleDir, "input.md");
 const metaPath = path.join(articleDir, "original.meta.json");
@@ -79,6 +79,11 @@ function buildEditUrl(restRoot, post) {
 
   const root = new URL(restRoot);
   return `${root.origin}/wp-admin/post.php?post=${post.id}&action=edit`;
+}
+
+const anchorFix = spawnSync(process.execPath, [path.resolve("scripts/fix-internal-anchor-texts.mjs"), articleDir], { encoding: "utf8" });
+if (anchorFix.status !== 0) {
+  throw new Error(`内部アンカー検証がFAILのためWordPress下書き作成を停止しました: ${anchorFix.stderr || anchorFix.stdout}`);
 }
 
 const content = await readFile(rewrittenPath, "utf8");

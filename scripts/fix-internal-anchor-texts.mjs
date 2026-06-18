@@ -4,12 +4,16 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import * as parse5 from "parse5";
 
-const articleDir = process.argv[2] || "articles/sample-article";
+const articleDir = process.argv[2] || process.env.ARTICLE_DIR || "articles/sample-article";
 const rewrittenPath = path.join(articleDir, "rewritten.html");
 const reportPath = path.join(articleDir, "anchor-link-report.json");
 
 function isElement(node, tagName) {
   return node?.nodeName === tagName && node?.tagName === tagName;
+}
+
+function isHeading(node) {
+  return isElement(node, "h2") || isElement(node, "h3") || isElement(node, "h4");
 }
 
 function getAttr(node, name) {
@@ -36,19 +40,35 @@ function walk(node, callback) {
   for (const child of node.childNodes || []) walk(child, callback);
 }
 
-function collectHeadingTargets(documentFragment) {
-  const targets = new Map();
+function collectTargets(documentFragment) {
+  const ids = new Map();
+  const headingTargets = new Map();
+  const duplicateHeadingIds = [];
+  const emptyHeadingTexts = [];
+  const seenDuplicateHeadingIds = new Set();
+
   walk(documentFragment, (node) => {
-    if (!isElement(node, "h2") && !isElement(node, "h3") && !isElement(node, "h4")) return;
+    if (!node?.tagName) return;
     const id = getAttr(node, "id");
-    if (!id || targets.has(id)) return;
-    targets.set(id, {
-      id,
-      tagName: node.tagName,
-      text: normalizeText(textContent(node)),
-    });
+    if (id) {
+      if (!ids.has(id)) ids.set(id, []);
+      ids.get(id).push({ tagName: node.tagName, isHeading: isHeading(node) });
+    }
+
+    if (!isHeading(node) || !id) return;
+    const headingText = normalizeText(textContent(node));
+    if (!headingText) emptyHeadingTexts.push({ id, tagName: node.tagName });
+    if (headingTargets.has(id)) {
+      if (!seenDuplicateHeadingIds.has(id)) {
+        duplicateHeadingIds.push({ id, tagNames: [headingTargets.get(id).tagName, node.tagName] });
+        seenDuplicateHeadingIds.add(id);
+      }
+      return;
+    }
+    headingTargets.set(id, { id, tagName: node.tagName, text: headingText });
   });
-  return targets;
+
+  return { ids, headingTargets, duplicateHeadingIds, emptyHeadingTexts };
 }
 
 function internalIdFromHref(href) {
@@ -62,9 +82,12 @@ function internalIdFromHref(href) {
 
 const html = await readFile(rewrittenPath, "utf8");
 const fragment = parse5.parseFragment(html);
-const headingTargets = collectHeadingTargets(fragment);
+const { ids, headingTargets, duplicateHeadingIds, emptyHeadingTexts } = collectTargets(fragment);
 const fixes = [];
 const missingTargetIds = [];
+const invalidTargetIds = [];
+const emptyAnchorTexts = [];
+const postFixMismatches = [];
 let checkedAnchorLinks = 0;
 let matchedLinks = 0;
 let fixedLinks = 0;
@@ -76,40 +99,69 @@ walk(fragment, (node) => {
   if (!targetId) return;
 
   checkedAnchorLinks += 1;
+  const before = normalizeText(textContent(node));
+  if (!before) emptyAnchorTexts.push({ href, targetId });
+
   const target = headingTargets.get(targetId);
   if (!target) {
-    missingTargetIds.push({ href, targetId, anchorText: normalizeText(textContent(node)) });
+    if (ids.has(targetId)) {
+      invalidTargetIds.push({
+        href,
+        targetId,
+        anchorText: before,
+        targetElements: ids.get(targetId).map(({ tagName }) => tagName),
+      });
+    } else {
+      missingTargetIds.push({ href, targetId, anchorText: before });
+    }
     return;
   }
 
-  const before = normalizeText(textContent(node));
   const after = target.text;
   if (before === after) {
     matchedLinks += 1;
-    return;
+  } else {
+    replaceText(node, after);
+    fixedLinks += 1;
+    fixes.push({ href, before, after, targetHeading: target.text });
   }
 
-  replaceText(node, after);
-  fixedLinks += 1;
-  fixes.push({ href, before, after, targetHeading: target.text });
+  const finalAnchorText = normalizeText(textContent(node));
+  if (finalAnchorText !== target.text) {
+    postFixMismatches.push({ href, targetId, anchorText: finalAnchorText, targetHeading: target.text });
+  }
 });
 
+const ok =
+  duplicateHeadingIds.length === 0 &&
+  missingTargetIds.length === 0 &&
+  invalidTargetIds.length === 0 &&
+  emptyAnchorTexts.length === 0 &&
+  emptyHeadingTexts.length === 0 &&
+  postFixMismatches.length === 0;
+
 const report = {
-  ok: missingTargetIds.length === 0,
+  ok,
+  articleDir,
   checkedAnchorLinks,
   matchedLinks,
   fixedLinks,
   missingTargetIds,
+  duplicateHeadingIds,
+  invalidTargetIds,
+  emptyAnchorTexts,
+  emptyHeadingTexts,
+  postFixMismatches,
   fixes,
-  finalJudgement: missingTargetIds.length === 0 ? "PASS" : "FAIL",
+  finalJudgement: ok ? "PASS" : "FAIL",
 };
 
 console.log(JSON.stringify(report, null, 2));
 
-if (report.ok) {
+if (ok) {
   await writeFile(rewrittenPath, parse5.serialize(fragment), "utf8");
 }
 await mkdir(articleDir, { recursive: true });
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
-if (!report.ok) process.exitCode = 1;
+if (!ok) process.exitCode = 1;
