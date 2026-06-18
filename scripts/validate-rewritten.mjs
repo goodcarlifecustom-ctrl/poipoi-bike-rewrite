@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ensureRequiredAnchors, loadRequiredLinks, validateRequiredAnchors } from "./lib/required-links.mjs";
+import { validateIntroExternalLink } from "./lib/intro-external-link.mjs";
 
 const articleDir = process.argv[2] || "articles/sample-article";
 const originalPath = path.join(articleDir, "original.html");
@@ -427,6 +428,13 @@ if (original !== null && rewritten !== null && !rewrittenIsPlaceholder) {
   addCheck("required_anchors_present", requiredAnchorValidation.ok, "必須アンカーテキストが指定URLで1回だけリンク化されている", {
     requiredLinkCount: requiredLinks.length,
     errors: requiredAnchorValidation.errors,
+  });
+
+  const introExternalLinkValidation = validateIntroExternalLink(original, rewritten);
+  addCheck("primary_external_link_in_intro_before_first_h2", introExternalLinkValidation.ok, "入力記事の主要外部リンクが導入文内かつ最初のH2より前に1回だけ自然に配置されている", {
+    targetUrl: introExternalLinkValidation.target?.url || null,
+    targetAnchor: introExternalLinkValidation.target?.anchor || null,
+    errors: introExternalLinkValidation.errors,
   });
 
   const wakaruCapboxes = wakarukotoCapboxes(rewritten);
