@@ -172,6 +172,9 @@ test("統合コマンドを2回実行しても2回目のrewritten.htmlは同一"
     const secondRun = spawnSync(process.execPath, ["scripts/finalize-article.mjs", articleDir], { cwd: process.cwd(), encoding: "utf8" });
     assert.equal(secondRun.status, 0, secondRun.stderr || secondRun.stdout);
     const second = await readFile(path.join(articleDir, "rewritten.html"), "utf8");
+    const anchorReport = JSON.parse(await readFile(path.join(articleDir, "anchor-link-report.json"), "utf8"));
+    assert.equal(anchorReport.finalJudgement, "PASS");
+    assert.equal(anchorReport.articleDir, articleDir);
     assert.equal(second, first);
   } finally {
     await rm(dir, { recursive: true, force: true });

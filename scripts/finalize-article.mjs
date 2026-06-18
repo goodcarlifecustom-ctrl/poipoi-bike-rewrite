@@ -9,8 +9,15 @@ const articleDir = process.argv[2] || "articles/sample-article";
 const rewrittenPath = join(articleDir, "rewritten.html");
 const runReportPath = join(articleDir, "decoration-run-report.json");
 const validationReportPath = join(articleDir, "decoration-validation-report.json");
+const anchorReportPath = join(articleDir, "anchor-link-report.json");
 const source = await readFile(rewrittenPath, "utf8");
 const config = await loadArticleDecorationConfig("rules/article-decoration.json", articleDir);
+
+async function copyAnchorReportFromTemp(tempAnchorReportPath) {
+  const report = JSON.parse(await readFile(tempAnchorReportPath, "utf8"));
+  report.articleDir = articleDir;
+  await writeFile(anchorReportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+}
 const tempRoot = await mkdtemp(join(tmpdir(), "poipoi-finalize-"));
 try {
   const tempArticleDir = join(tempRoot, "article");
@@ -37,11 +44,23 @@ try {
     throw new Error(`existing validate failed: ${validate.stderr || validate.stdout}`);
   }
 
+  const anchorFix = spawnSync(process.execPath, [resolve("scripts/fix-internal-anchor-texts.mjs"), tempArticleDir], { encoding: "utf8" });
+  const tempAnchorReportPath = join(tempArticleDir, "anchor-link-report.json");
+  if (anchorFix.status !== 0) {
+    try {
+      await copyAnchorReportFromTemp(tempAnchorReportPath);
+    } catch {
+      // If report creation failed before the file was written, include process output in the thrown error instead.
+    }
+    throw new Error(`internal anchor validation failed: ${anchorFix.stderr || anchorFix.stdout}`);
+  }
+
   const atomicPath = join(articleDir, `.rewritten.${process.pid}.tmp`);
   await writeFile(atomicPath, await readFile(tempRewrittenPath, "utf8"), "utf8");
   await rename(atomicPath, rewrittenPath);
   await writeFile(runReportPath, `${JSON.stringify(decorated.report, null, 2)}\n`, "utf8");
   await writeFile(validationReportPath, `${JSON.stringify(decorationValidationReport, null, 2)}\n`, "utf8");
+  await copyAnchorReportFromTemp(join(tempArticleDir, "anchor-link-report.json"));
   console.log(`統合完成処理に成功しました: ${rewrittenPath}`);
 } catch (error) {
   console.error(error.message);

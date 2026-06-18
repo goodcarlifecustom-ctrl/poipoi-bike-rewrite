@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "articleDir": "articles/sample-article",
+  "checkedAnchorLinks": 10,
+  "matchedLinks": 10,
+  "fixedLinks": 0,
+  "missingTargetIds": [],
+  "duplicateHeadingIds": [],
+  "invalidTargetIds": [],
+  "emptyAnchorTexts": [],
+  "emptyHeadingTexts": [],
+  "postFixMismatches": [],
+  "fixes": [],
+  "finalJudgement": "PASS"
+}
