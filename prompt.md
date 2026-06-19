@@ -35,8 +35,8 @@ https://poi-poi.co.jp/bike/〇〇
 ## 必ず実行するコマンド
 
 1. `node scripts/import-original-from-url.mjs "<記事URL>"`
-2. `node scripts/validate-rewritten.mjs`
-3. `node scripts/create-wordpress-draft.mjs`
+2. `node scripts/finalize-article.mjs articles/sample-article`
+3. `node scripts/create-wordpress-draft.mjs articles/sample-article`
 
 ## 成功条件
 
@@ -44,6 +44,11 @@ https://poi-poi.co.jp/bike/〇〇
 * rewritten.html作成：成功
 * HTML検証：成功
 * WordPress新規下書き作成：成功
+* 「この記事でわかること」が1回だけ存在する
+* 「この記事でわかること」の各項目が `<a href="#...">アンカーテキスト</a>` になっている
+* `href="#..."` のリンク先IDが実在するH2/H3/H4である
+* アンカーリンク数が0件の場合は失敗
+* `anchor-link-report.json` が PASS である
 * WordPress下書き本文：あり
 * wordpress-draft.json に下書きID、編集URL、確認可能URL、投稿前本文文字数、投稿後本文文字数が保存されている
 * change-log.md にURL取得結果、リライト内容、外部リンク追加箇所、検証結果、WordPress下書き作成結果が記録されている

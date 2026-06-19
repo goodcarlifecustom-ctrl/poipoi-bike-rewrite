@@ -28,6 +28,7 @@ export function decorateArticleHtml(html, config = {}) {
   const report = emptyRunReport();
   unwrapExistingMarkers(document, report);
   removeGeneratedDecorations(document);
+  removeExistingArticleTocs(document, cfg, report);
   assignHeadingIds(document);
   splitLongParagraphs(document, cfg, report);
   buildArticleToc(document, cfg);
@@ -107,7 +108,7 @@ export function validateDecorations(html, config = {}) {
   return { ok: errors.length === 0, errors, metrics: { h2Count: h2s.length, articleTocLinkCount: tocLinks.length, h3Indexes: h3IndexReports, checkedParagraphCount: paragraphs.length, markerCount: markers.length, ...sectionStats } };
 }
 
-function emptyRunReport() { return { h2Count: 0, articleTocLinkCount: 0, h3Indexes: [], checkedParagraphCount: 0, splitParagraphCount: 0, removedMarkerCount: 0, newMarkerCount: 0, markerCount: 0, eligibleSectionCount: 0, markedSectionCount: 0, unmarkedSections: [], errors: [] }; }
+function emptyRunReport() { return { h2Count: 0, articleTocLinkCount: 0, removedArticleTocCount: 0, h3Indexes: [], checkedParagraphCount: 0, splitParagraphCount: 0, removedMarkerCount: 0, newMarkerCount: 0, markerCount: 0, eligibleSectionCount: 0, markedSectionCount: 0, unmarkedSections: [], errors: [] }; }
 function mergeConfig(base, override = {}) { return { ...base, ...override, sectionIndexes: override.sectionIndexes ?? base.sectionIndexes, contentLists: override.contentLists ?? base.contentLists, paragraph: { ...base.paragraph, ...(override?.paragraph || {}) }, markers: { ...base.markers, ...(override?.markers || {}) } }; }
 function tagName(node) { return node?.tagName || ""; }
 function isElement(node) { return Boolean(node?.tagName); }
@@ -149,6 +150,21 @@ function removeGeneratedDecorations(root) {
   }
 }
 function generatedBlocks(root, type) { return elements(root).filter((node) => attr(node, DECORATION_ATTR) === type); }
+function removeExistingArticleTocs(root, cfg, report) {
+  const title = String(cfg.articleTocTitle || DEFAULT_CONFIG.articleTocTitle);
+  for (const node of [...elements(root)]) {
+    if (attr(node, DECORATION_ATTR) === "article-toc") continue;
+    const text = textContent(node);
+    const isCapBoxToc = hasClass(node, "cap_box") && text.includes(title);
+    const isPlainTocList = ["ul", "ol"].includes(tagName(node)) && text.includes(title);
+    const isHeadingToc = /^h[2-4]$/.test(tagName(node)) && headingText(node) === title;
+    if (!isCapBoxToc && !isPlainTocList && !isHeadingToc) continue;
+    const { parent, index } = indexInParent(root, node);
+    if (!parent) continue;
+    parent.childNodes.splice(index, 1);
+    report.removedArticleTocCount = (report.removedArticleTocCount || 0) + 1;
+  }
+}
 
 function assignHeadingIds(root) { const used = new Set(); let h2Index = 0; let h3Index = 0; for (const h of elements(root).filter((n) => /^h[23]$/.test(tagName(n)))) { if (tagName(h) === "h2") { h2Index += 1; h3Index = 0; } else h3Index += 1; const current = attr(h, "id").trim(); if (current && !used.has(current)) { used.add(current); continue; } const base = tagName(h) === "h2" ? `h2-${slug(headingText(h))}-${h2Index}` : `h3-${slug(headingText(h))}-${h2Index}-${h3Index}`; let id = base; let suffix = 2; while (used.has(id)) id = `${base}-${suffix++}`; setAttr(h, "id", id); used.add(id); } }
 function buildArticleToc(root, cfg) { const h2s = headings(root, "h2"); if (h2s.length === 0) return; const items = h2s.map((h) => `<li><a href="#${escapeAttr(attr(h, "id"))}">${escapeHtml(headingText(h))}</a></li>`).join(""); const nodes = parseNodes(`<div class="cap_box" data-poipoi-decoration="article-toc"><div class="cap_box_ttl"><span>${escapeHtml(cfg.articleTocTitle)}</span></div><div class="cap_box_content"><ul>${items}</ul></div></div>`); const pos = indexInParent(root, h2s[0]); if (pos.parent) { pos.parent.childNodes.splice(pos.index, 0, ...nodes); for (const node of nodes) node.parentNode = pos.parent; } }

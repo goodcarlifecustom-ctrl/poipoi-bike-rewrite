@@ -180,3 +180,45 @@ test("統合コマンドを2回実行しても2回目のrewritten.htmlは同一"
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("finalize generates three article toc anchors for three H2 headings", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "poipoi-finalize-three-h2-"));
+  const articleDir = path.join(dir, "article");
+  const html = "<p>導入文です。査定の概要を説明します。</p><h2>買取相場</h2><p>査定額の目安です。</p><h2>高く売るコツ</h2><p>確認して準備します。</p><h2>必要書類</h2><p>書類を用意します。</p>";
+  await mkdir(articleDir, { recursive: true });
+  await writeFile(path.join(articleDir, "original.html"), html, "utf8");
+  await writeFile(path.join(articleDir, "rewritten.html"), html, "utf8");
+  await writeFile(path.join(articleDir, "article-decoration.json"), JSON.stringify({ ...config, sectionIndexes: [], markers: { maxPerSection: 0, positiveKeywords: [], negativeKeywords: [] } }), "utf8");
+  try {
+    const run = spawnSync(process.execPath, ["scripts/finalize-article.mjs", articleDir], { cwd: process.cwd(), encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    const rewritten = await readFile(path.join(articleDir, "rewritten.html"), "utf8");
+    const toc = rewritten.match(/data-poipoi-decoration="article-toc"[\s\S]*?<\/ul>/)?.[0] || "";
+    assert.equal((toc.match(/<li><a href="#/g) || []).length, 3);
+    const report = JSON.parse(await readFile(path.join(articleDir, "anchor-link-report.json"), "utf8"));
+    assert.equal(report.articleTocLinkCount, 3);
+    assert.equal(report.finalJudgement, "PASS");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("finalize replaces handmade linkless article toc with linked toc", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "poipoi-finalize-handmade-toc-"));
+  const articleDir = path.join(dir, "article");
+  const html = '<div class="cap_box"><div class="cap_box_ttl"><span>この記事でわかること</span></div><div class="cap_box_content"><ul><li>古い項目</li></ul></div></div><h2>買取相場</h2><p>査定の説明です。</p><h2>必要書類</h2><p>確認事項です。</p>';
+  await mkdir(articleDir, { recursive: true });
+  await writeFile(path.join(articleDir, "original.html"), html, "utf8");
+  await writeFile(path.join(articleDir, "rewritten.html"), html, "utf8");
+  await writeFile(path.join(articleDir, "article-decoration.json"), JSON.stringify({ ...config, sectionIndexes: [], markers: { maxPerSection: 0, positiveKeywords: [], negativeKeywords: [] } }), "utf8");
+  try {
+    const run = spawnSync(process.execPath, ["scripts/finalize-article.mjs", articleDir], { cwd: process.cwd(), encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    const rewritten = await readFile(path.join(articleDir, "rewritten.html"), "utf8");
+    assert.equal((rewritten.match(/この記事でわかること/g) || []).length, 1);
+    assert.doesNotMatch(rewritten, /古い項目/);
+    assert.equal((rewritten.match(/<li><a href="#/g) || []).length, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -18,7 +18,7 @@ async function tempArticle(prefix, html) {
 test("fixes internal anchor text to match target heading text", async () => {
   const dir = await tempArticle(
     "anchor-fix-",
-    `<ul><li><a href="#sell-method-comparison"><span>出張買取・一括査定・店舗持ち込みの違い</span></a></li></ul>\n<h2 id="sell-method-comparison">ネオクラシックバイクを売る方法の比較</h2>`,
+    `<div class="cap_box" data-poipoi-decoration="article-toc"><div>この記事でわかること</div><ul><li><a href="#sell-method-comparison"><span>出張買取・一括査定・店舗持ち込みの違い</span></a></li></ul></div>\n<h2 id="sell-method-comparison">ネオクラシックバイクを売る方法の比較</h2>`,
   );
 
   const { stdout } = await execFileAsync(process.execPath, [scriptPath, dir]);
@@ -78,4 +78,39 @@ test("reports duplicate heading ids, invalid targets, and empty text as failures
     assert.equal(report.emptyHeadingTexts[0].id, "empty-heading");
     return true;
   });
+});
+
+test("fails when H2 exists but there are zero internal anchor links", async () => {
+  const dir = await tempArticle("anchor-zero-", `<h2 id="target">買取相場</h2><p>本文です。</p>`);
+
+  await assert.rejects(async () => execFileAsync(process.execPath, [scriptPath, dir]), (error) => {
+    const report = JSON.parse(error.stdout);
+    assert.equal(report.ok, false);
+    assert.equal(report.h2TargetCount, 1);
+    assert.equal(report.checkedAnchorLinks, 0);
+    assert.equal(report.finalJudgement, "FAIL");
+    return true;
+  });
+});
+
+test("fails when article toc li has no anchor tag", async () => {
+  const dir = await tempArticle("anchor-linkless-toc-", `<div class="cap_box"><div>この記事でわかること</div><ul><li>買取相場</li></ul></div><h2 id="target">買取相場</h2>`);
+
+  await assert.rejects(async () => execFileAsync(process.execPath, [scriptPath, dir]), (error) => {
+    const report = JSON.parse(error.stdout);
+    assert.equal(report.ok, false);
+    assert.equal(report.emptyArticleTocItems.length, 1);
+    assert.equal(report.missingArticleTocLinks.length, 1);
+    return true;
+  });
+});
+
+test("create-wordpress-draft runs finalize before reading rewritten content", async () => {
+  const source = await readFile(path.resolve("scripts/create-wordpress-draft.mjs"), "utf8");
+  const finalizeIndex = source.indexOf('scripts/finalize-article.mjs');
+  const readIndex = source.indexOf('const content = await readFile(rewrittenPath, "utf8")');
+  assert.notEqual(finalizeIndex, -1);
+  assert.notEqual(readIndex, -1);
+  assert.equal(finalizeIndex < readIndex, true);
+  assert.match(source, /記事の完成処理がFAILのためWordPress下書き作成を停止しました/);
 });

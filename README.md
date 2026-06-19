@@ -28,10 +28,9 @@ URLが渡されると、Codex Cloudは確認待ちで止まらず、以下を最
 5. `articles/sample-article/rewritten.html` を作成
 6. 必要に応じて `node scripts/build-comparison-table.mjs articles/sample-article` で比較表を作成・挿入
 7. 公的機関・公式サイト・信頼できる情報源への外部リンクを追加
-8. SWELLテーマ向けのHTML装飾を適用
-9. `node scripts/validate-rewritten.mjs` でHTML検証
-10. WordPressへ新規下書きとして投稿
-11. `articles/sample-article/change-log.md` に作業内容・検証結果・下書きURLまたは投稿スキップ理由を記録
+8. `node scripts/finalize-article.mjs articles/sample-article` でSWELL装飾、H2アンカー付き「この記事でわかること」生成、HTML検証、内部アンカー補正を完了
+9. WordPressへ新規下書きとして投稿
+10. `articles/sample-article/change-log.md` に作業内容・検証結果・下書きURLまたは投稿スキップ理由を記録
 
 ## リライト内容を変えたい場合
 
@@ -80,8 +79,10 @@ WordPressの認証情報はGitHubに入れず、Codex Cloudの環境変数で管
 ```bash
 npm run import -- "<記事URL>"
 npm run table -- articles/sample-article
-npm run validate
-npm run draft
+npm run finalize -- articles/sample-article
+npm run draft -- articles/sample-article
 ```
 
-`npm run draft` はWordPressへ新規下書きを作成します。既存公開記事は更新しません。
+`npm run finalize` は投稿対象の `rewritten.html` を更新し、装飾・目次生成・検証・内部アンカー補正をまとめて実行します。`npm run draft` は投稿直前にも finalize を実行してからWordPressへ新規下書きを作成します。既存公開記事は更新しません。
+
+`npm run decorate` は `rewritten.decorated.html` を作るプレビュー用です。投稿対象の `rewritten.html` は更新しないため、投稿前の完成処理には `npm run finalize -- articles/sample-article` を使ってください。

@@ -1,6 +1,10 @@
 {
-  "source_url": "https://poi-poi.co.jp/bike/",
-  "fetched_at": "sample",
-  "method": "sample",
-  "title": "バイク買取MAX｜バイクを高く売るための査定ガイド"
+  "source_url": "https://poi-poi.co.jp/bike/kaizousha/neoclassic.html",
+  "output_path": "articles/sample-article/original.html",
+  "saved_at": "2026-06-19T02:25:10.555Z",
+  "source_type": "wordpress-rest-auth:posts",
+  "api_url": "https://poi-poi.co.jp/bike/wp-json/wp/v2/posts?slug=neoclassic&_fields=id%2Cslug%2Clink%2Ctitle%2Ccontent%2Cstatus%2Ctype&context=view",
+  "title": "ネオクラシックバイクおすすめ15選！オシャレで壊れにくい新ジャンル！",
+  "character_count": 44918,
+  "backup_path": "articles/sample-article/original.backup-20260619-022510.html"
 }
