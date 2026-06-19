@@ -1,10 +1,10 @@
 {
-  "source_url": "https://poi-poi.co.jp/bike/kaizousha/neoclassic.html",
+  "source_url": "https://poi-poi.co.jp/bike/hikaku/ysp.html",
   "output_path": "articles/sample-article/original.html",
-  "saved_at": "2026-06-19T02:25:10.555Z",
+  "saved_at": "2026-06-19T03:05:51.452Z",
   "source_type": "wordpress-rest-auth:posts",
-  "api_url": "https://poi-poi.co.jp/bike/wp-json/wp/v2/posts?slug=neoclassic&_fields=id%2Cslug%2Clink%2Ctitle%2Ccontent%2Cstatus%2Ctype&context=view",
-  "title": "ネオクラシックバイクおすすめ15選！オシャレで壊れにくい新ジャンル！",
-  "character_count": 44918,
-  "backup_path": "articles/sample-article/original.backup-20260619-022510.html"
+  "api_url": "https://poi-poi.co.jp/bike/wp-json/wp/v2/posts?slug=ysp&_fields=id%2Cslug%2Clink%2Ctitle%2Ccontent%2Cstatus%2Ctype&context=view",
+  "title": "【YSPの評判 口コミって悪い？】買取も徹底調査しました！",
+  "character_count": 11162,
+  "backup_path": "articles/sample-article/original.backup-20260619-030551.html"
 }

@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "restRoot": "https://poi-poi.co.jp/bike/wp-json/",
+  "postType": "posts",
+  "endpoint": "https://poi-poi.co.jp/bike/wp-json/wp/v2/posts",
+  "httpStatus": 200,
+  "wordpressErrorCode": null,
+  "message": "プリフライトに成功しました。",
+  "availableRestBases": [
+    "blocks",
+    "blog_parts",
+    "font-families",
+    "font-families/(?P<font_family_id>[\\d]+)/font-faces",
+    "global-styles",
+    "lp",
+    "media",
+    "menu-items",
+    "navigation",
+    "pages",
+    "posts",
+    "rm_content_editor",
+    "template-parts",
+    "templates"
+  ]
+}

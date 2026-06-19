@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-06-19T03:25:13.922Z",
+  "expectedTitle": "【YSPの評判・口コミって悪い？】買取も徹底調査しました！",
+  "wordpressTitle": "【YSPの評判 口コミって悪い？】買取も徹底調査しました！",
+  "titleExactMatch": false,
+  "titleHasInternalString": false,
+  "workHeadShaMatch": true,
+  "artifacts": [
+    {
+      "name": "working-tree rewritten.html",
+      "sha256": "69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6",
+      "htmlLength": 13921,
+      "h2Count": 10,
+      "idlessH2Count": 0,
+      "hrefHashCount": 10,
+      "wakarukotoCount": 1,
+      "articleTocLiCount": 10,
+      "articleTocAnchorCount": 10,
+      "linklessTocLiCount": 0,
+      "missingTargetCount": 0,
+      "missingTargets": []
+    },
+    {
+      "name": "git HEAD rewritten.html",
+      "sha256": "69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6",
+      "htmlLength": 13921,
+      "h2Count": 10,
+      "idlessH2Count": 0,
+      "hrefHashCount": 10,
+      "wakarukotoCount": 1,
+      "articleTocLiCount": 10,
+      "articleTocAnchorCount": 10,
+      "linklessTocLiCount": 0,
+      "missingTargetCount": 0,
+      "missingTargets": []
+    },
+    {
+      "name": "WordPress draft 29300 content.raw",
+      "sha256": "69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6",
+      "htmlLength": 13921,
+      "h2Count": 10,
+      "idlessH2Count": 0,
+      "hrefHashCount": 10,
+      "wakarukotoCount": 1,
+      "articleTocLiCount": 10,
+      "articleTocAnchorCount": 10,
+      "linklessTocLiCount": 0,
+      "missingTargetCount": 0,
+      "missingTargets": []
+    },
+    {
+      "name": "WordPress draft 29300 content.rendered",
+      "sha256": "4f9405ec0d8f798a464e3589a5fc2dc4947e31015f861d41a616eeac84b2ded9",
+      "htmlLength": 13882,
+      "h2Count": 10,
+      "idlessH2Count": 0,
+      "hrefHashCount": 10,
+      "wakarukotoCount": 1,
+      "articleTocLiCount": 10,
+      "articleTocAnchorCount": 10,
+      "linklessTocLiCount": 0,
+      "missingTargetCount": 0,
+      "missingTargets": []
+    },
+    {
+      "name": "confirmation HTML finalized-confirmation.html",
+      "sha256": "69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6",
+      "htmlLength": 13921,
+      "h2Count": 10,
+      "idlessH2Count": 0,
+      "hrefHashCount": 10,
+      "wakarukotoCount": 1,
+      "articleTocLiCount": 10,
+      "articleTocAnchorCount": 10,
+      "linklessTocLiCount": 0,
+      "missingTargetCount": 0,
+      "missingTargets": []
+    }
+  ]
+}
