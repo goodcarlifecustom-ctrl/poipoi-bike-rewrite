@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
+import { endpointFor, extractSourceUrl, normalizeRestRoot, preflightWordPressDraft, readMeta, restRootFromApiUrl, validateDraftTitle } from "./lib/wp-draft-preflight.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -13,6 +14,7 @@ const rewrittenPath = path.join(articleDir, "rewritten.html");
 const inputPath = path.join(articleDir, "input.md");
 const metaPath = path.join(articleDir, "original.meta.json");
 const outputPath = path.join(articleDir, "wordpress-draft.json");
+const preflightPath = path.join(articleDir, "wp-rest-preflight.json");
 
 function requiredEnv(name) {
   const value = process.env[name];
@@ -29,12 +31,6 @@ async function readOptional(filePath) {
     if (error.code === "ENOENT") return "";
     throw error;
   }
-}
-
-function normalizeRestRoot(value) {
-  const trimmed = value.trim().replace(/\/+$/, "");
-  if (trimmed.endsWith("/wp-json")) return `${trimmed}/`;
-  return `${trimmed}/wp-json/`;
 }
 
 function stripTags(value) {
@@ -91,7 +87,17 @@ if (!content.trim()) throw new Error(`${rewrittenPath} が空です。`);
 
 const username = requiredEnv("WP_USERNAME");
 const applicationPassword = requiredEnv("WP_APPLICATION_PASSWORD");
-const restRoot = normalizeRestRoot(requiredEnv("WP_REST_ROOT"));
+const meta = await readMeta(metaPath);
+let configuredRestRoot = "";
+try {
+  configuredRestRoot = normalizeRestRoot(requiredEnv("WP_REST_ROOT"));
+} catch (error) {
+  const metaRestRoot = restRootFromApiUrl(meta.api_url || meta.apiUrl || "");
+  if (!metaRestRoot) throw error;
+  configuredRestRoot = metaRestRoot;
+}
+const metaRestRoot = restRootFromApiUrl(meta.api_url || meta.apiUrl || "");
+const restRoot = metaRestRoot || configuredRestRoot;
 const postType = (process.env.WP_POST_TYPE || "posts").trim() || "posts";
 const status = (process.env.WP_DRAFT_STATUS || "draft").trim() || "draft";
 
@@ -99,8 +105,19 @@ if (!/^draft|pending|private$/i.test(status)) {
   throw new Error("WP_DRAFT_STATUS は draft / pending / private のいずれかを指定してください。公開ステータスでは投稿しません。");
 }
 
-const title = await getTitle(content);
-const endpoint = new URL(`wp/v2/${postType}`, restRoot).toString();
+const title = validateDraftTitle(await getTitle(content));
+const endpoint = endpointFor(restRoot, postType);
+const preflight = await preflightWordPressDraft({
+  restRoot,
+  postType,
+  endpoint,
+  sourceUrl: extractSourceUrl(meta),
+  reportPath: preflightPath,
+});
+if (!preflight.ok) {
+  throw new Error(`WordPress RESTプリフライトに失敗したため投稿を停止しました: ${preflight.report.message}`);
+}
+const postEndpoint = endpointFor(restRoot, preflight.restBase);
 
 async function postJson(url, body, headers) {
   try {
@@ -150,7 +167,7 @@ async function postJson(url, body, headers) {
   }
 }
 
-const response = await postJson(endpoint, JSON.stringify({ title, content, status }), {
+const response = await postJson(postEndpoint, JSON.stringify({ title, content, status }), {
   authorization: buildAuthHeader(username, applicationPassword),
   "content-type": "application/json",
   accept: "application/json",

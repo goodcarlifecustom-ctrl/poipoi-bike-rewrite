@@ -85,4 +85,25 @@ npm run draft -- articles/sample-article
 
 `npm run finalize` は投稿対象の `rewritten.html` を更新し、装飾・目次生成・検証・内部アンカー補正をまとめて実行します。`npm run draft` は投稿直前にも finalize を実行してからWordPressへ新規下書きを作成します。既存公開記事は更新しません。
 
+### WordPress REST API環境変数
+
+- `WP_POST_TYPES`: 元記事取得時に検索する投稿タイプ候補です。`posts,pages` のように複数指定できます。
+- `WP_POST_TYPE`: 新規下書き作成時に使う投稿タイプです。`posts` のように単一で指定します。
+- `WP_REST_ROOT`: WordPress REST APIのルート、またはWordPress設置先URLを指定します。`create-wordpress-draft.mjs` 側で `wp/v2/{投稿タイプ}` を付加するため、`wp/v2` や投稿タイプ名までは含めません。
+
+正しい例:
+
+```env
+WP_REST_ROOT=https://poi-poi.co.jp/bike/
+WP_REST_ROOT=https://poi-poi.co.jp/bike/wp-json/
+WP_POST_TYPE=posts
+```
+
+誤った例:
+
+```env
+WP_REST_ROOT=https://poi-poi.co.jp/bike/wp-json/wp/v2/
+WP_REST_ROOT=https://poi-poi.co.jp/bike/wp-json/wp/v2/posts
+```
+
 `npm run decorate` は `rewritten.decorated.html` を作るプレビュー用です。投稿対象の `rewritten.html` は更新しないため、投稿前の完成処理には `npm run finalize -- articles/sample-article` を使ってください。
