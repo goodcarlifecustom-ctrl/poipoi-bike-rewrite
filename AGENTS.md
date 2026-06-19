@@ -50,10 +50,10 @@
 7. 確認待ちで止まらず、続けて `articles/sample-article/rewritten.html` を作成する。
 8. リライト後・外部リンク挿入前・装飾前に必ず `rules/comparison-table-rule.md` を読み、`node scripts/build-comparison-table.mjs articles/sample-article` を実行して、必要に応じて比較表を自動作成・挿入する。
 9. 比較表作成後・装飾前に必ず `rules/external-link-rule.md` を読み直し、その内容に従って、公的機関・公式サイト・信頼できる情報源への外部リンクを必要な箇所にだけ自然に追加する。
-10. `rules/decoration-rule.md` に従って、SWELLテーマ向けのHTML装飾を適用する。装飾工程内で外部リンクを調整する場合も、必ず `rules/external-link-rule.md` を再確認し、見出し内にリンクを設置しない。
-11. `node scripts/validate-rewritten.mjs` を実行する。
-12. WordPress認証情報が環境変数で利用できる場合は、`node scripts/create-wordpress-draft.mjs` を実行してWordPressへ新規下書きを作成する。認証情報がない場合は投稿実行のみスキップし、その理由を `change-log.md` に記録する。
-13. `articles/sample-article/change-log.md` に変更内容、比較表の作成・未作成理由、外部リンク追加箇所、検証結果、WordPress下書きURLまたは投稿スキップ理由を記録する。
+10. WordPress下書き作成前に必ず `node scripts/finalize-article.mjs articles/sample-article` を実行する。順番は「比較表作成→外部リンク追加→finalize→WordPress下書き作成」とし、finalize前に装飾・目次生成だけを手作業で完了した扱いにしない。
+11. finalize は、SWELL装飾を `rewritten.html` に反映し、「この記事でわかること」をH2アンカーリンク付きで生成し、H2/H3のidを補完し、HTML検証を実行し、内部アンカーリンクのテキストを見出し名に揃え、`anchor-link-report.json` を作成する。finalize失敗時はWordPress下書き作成へ進まない。
+12. WordPress認証情報が環境変数で利用できる場合は、`node scripts/create-wordpress-draft.mjs articles/sample-article` を実行してWordPressへ新規下書きを作成する。認証情報がない場合は投稿実行のみスキップし、その理由を `change-log.md` に記録する。
+13. `articles/sample-article/change-log.md` に変更内容、比較表の作成・未作成理由、外部リンク追加箇所、finalizeと検証結果、WordPress下書きURLまたは投稿スキップ理由を記録する。
 
 ## WordPress投稿ルール
 

@@ -81,9 +81,9 @@ function buildEditUrl(restRoot, post) {
   return `${root.origin}/wp-admin/post.php?post=${post.id}&action=edit`;
 }
 
-const anchorFix = spawnSync(process.execPath, [path.resolve("scripts/fix-internal-anchor-texts.mjs"), articleDir], { encoding: "utf8" });
-if (anchorFix.status !== 0) {
-  throw new Error(`内部アンカー検証がFAILのためWordPress下書き作成を停止しました: ${anchorFix.stderr || anchorFix.stdout}`);
+const finalize = spawnSync(process.execPath, [path.resolve("scripts/finalize-article.mjs"), articleDir], { encoding: "utf8" });
+if (finalize.status !== 0) {
+  throw new Error(`記事の完成処理がFAILのためWordPress下書き作成を停止しました: ${finalize.stderr || finalize.stdout}`);
 }
 
 const content = await readFile(rewrittenPath, "utf8");
