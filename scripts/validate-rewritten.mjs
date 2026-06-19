@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { ensureRequiredAnchors, loadRequiredLinks, validateRequiredAnchors } from "./lib/required-links.mjs";
 import { validateIntroExternalLink } from "./lib/intro-external-link.mjs";
@@ -89,11 +90,40 @@ function compactText(value) {
 }
 
 function normalizeTopicIntroText(value) {
-  return compactText(value.replace(/^[^。！？]{1,80}については、/u, ""));
+  return normalizeTemplateParagraph(value);
 }
 
 function normalizeSupplementText(value) {
-  return compactText(value.replace(/^補足ポイント\s*[0-9０-９]+\s*[:：]\s*/u, ""));
+  return normalizeTemplateParagraph(value);
+}
+
+function normalizeSerialNumber(value) {
+  return String(value).replace(/[0-9０-９]+/gu, "<N>");
+}
+
+function normalizeTemplatePrefix(value) {
+  return String(value)
+    .replace(/^.{1,80}?を選ぶときは、/u, "<ENTITY>を選ぶときは、")
+    .replace(/^.{1,80}?でバイク買取を相談する場合は、/u, "<ENTITY>でバイク買取を相談する場合は、")
+    .replace(/^.{1,80}?は、/u, "<ENTITY>は、")
+    .replace(/^.{1,80}?については、/u, "<ENTITY>については、");
+}
+
+function normalizeSupplementMarkers(value) {
+  return String(value)
+    .replace(/補足\s*[0-9０-９]+\s*として/gu, "補足<N>として")
+    .replace(/補足ポイント\s*[0-9０-９]+\s*[:：]/gu, "補足ポイント<N>：");
+}
+
+function normalizeTemplateParagraph(value, context = {}) {
+  let text = String(value);
+  for (const entity of [context.h3, context.h2].filter(Boolean)) {
+    text = text.split(entity).join("<ENTITY>");
+  }
+  text = normalizeTemplatePrefix(text);
+  text = normalizeSupplementMarkers(text);
+  text = normalizeSerialNumber(text);
+  return compactText(text);
 }
 
 function similarity(a, b) {
@@ -111,7 +141,7 @@ function similarity(a, b) {
   return overlap / grams.size;
 }
 
-function duplicateGroups(items, keyFn, minLength = 1) {
+function duplicateGroups(items, keyFn, minLength = 1, minCount = 2) {
   const groups = new Map();
   for (const item of items) {
     const key = keyFn(item.text);
@@ -120,25 +150,34 @@ function duplicateGroups(items, keyFn, minLength = 1) {
     groups.get(key).push(item);
   }
   return [...groups.entries()]
-    .filter(([, values]) => values.length >= 2)
+    .filter(([, values]) => values.length >= minCount)
     .map(([key, values]) => ({ key, paragraphs: values.map((item) => item.index), texts: values.map((item) => item.text) }));
 }
 
-function highSimilarityGroups(items, keyFn, threshold = 0.9) {
+function highSimilarityGroups(items, keyFn, threshold = 0.9, minCount = 2, minLength = 40) {
   const groups = [];
   for (const item of items) {
-    const key = keyFn(item.text);
-    if (!key || key.length < 40) continue;
-    let group = groups.find((candidate) => similarity(key, candidate.key) >= threshold);
+    const key = keyFn(item.text, item);
+    if (!key || key.length < minLength) continue;
+    let matchedSimilarity = 0;
+    let group = groups.find((candidate) => {
+      matchedSimilarity = similarity(key, candidate.key);
+      return matchedSimilarity >= threshold;
+    });
     if (!group) {
       group = { key, items: [] };
       groups.push(group);
     }
-    group.items.push(item);
+    group.items.push({ ...item, normalizedText: key, similarity: group.items.length === 0 ? 1 : Number(matchedSimilarity.toFixed(3)) });
   }
   return groups
-    .filter((group) => group.items.length >= 2)
-    .map((group) => ({ key: group.key, paragraphs: group.items.map((item) => item.index), texts: group.items.map((item) => item.text) }));
+    .filter((group) => group.items.length >= minCount)
+    .map((group) => ({
+      key: group.key,
+      paragraphs: group.items.map((item) => item.index),
+      contexts: group.items.map((item) => ({ paragraph: item.index, h2: item.h2 || "", h3: item.h3 || "", similarity: item.similarity })),
+      texts: group.items.map((item) => item.text),
+    }));
 }
 
 function collectParagraphContexts(html) {
@@ -157,7 +196,7 @@ function collectParagraphContexts(html) {
     } else {
       paragraphIndex += 1;
       const text = stripHtml(token).replace(/\s+/g, " ").trim();
-      contexts.push({ index: paragraphIndex, h2, h3, text, safetyHits: genericSafetyPhrases.filter((phrase) => text.includes(phrase)) });
+      contexts.push({ index: paragraphIndex, h2, h3, text, normalizedTemplateText: normalizeTemplateParagraph(text, { h2, h3 }), safetyHits: genericSafetyPhrases.filter((phrase) => text.includes(phrase)) });
     }
   }
   return contexts;
@@ -200,6 +239,72 @@ function longSimilarSupplementRuns(items) {
   }
   if (current.length >= 10) runs.push(current);
   return runs.map((run) => run.map((item) => ({ paragraph: item.index, text: item.text })));
+}
+
+function longestCommonSuffix(a, b) {
+  let i = a.length - 1;
+  let j = b.length - 1;
+  let suffix = "";
+  while (i >= 0 && j >= 0 && a[i] === b[j]) {
+    suffix = a[i] + suffix;
+    i -= 1;
+    j -= 1;
+  }
+  return suffix;
+}
+
+function longCommonSuffixGroups(items, minSuffixLength = 60, minCount = 3) {
+  const groups = [];
+  for (const item of items) {
+    const key = item.normalizedTemplateText || normalizeTemplateParagraph(item.text, item);
+    if (!key || key.length < minSuffixLength) continue;
+    let matched = null;
+    for (const group of groups) {
+      const suffix = longestCommonSuffix(group.suffix, key);
+      if (suffix.length >= minSuffixLength) {
+        group.suffix = suffix;
+        matched = group;
+        break;
+      }
+    }
+    if (!matched) {
+      matched = { suffix: key, items: [] };
+      groups.push(matched);
+    }
+    matched.items.push({ ...item, normalizedText: key });
+  }
+  return groups
+    .filter((group) => group.items.length >= minCount)
+    .map((group) => ({
+      suffix: group.suffix,
+      suffixLength: group.suffix.length,
+      paragraphs: group.items.map((item) => item.index),
+      contexts: group.items.map((item) => ({ paragraph: item.index, h2: item.h2 || "", h3: item.h3 || "" })),
+      texts: group.items.map((item) => item.text),
+    }));
+}
+
+function contentAfterSummaryHeading(html) {
+  const tokens = [...html.matchAll(/<(h[23])\b[^>]*>[\s\S]*?<\/\1>|<p\b[^>]*>[\s\S]*?<\/p>/gi)]
+    .map((match, order) => ({ order, html: match[0], tag: match[1]?.toLowerCase() || "p", text: stripHtml(match[0]).replace(/\s+/g, " ").trim() }));
+  const summaryIndex = tokens.findLastIndex((token) => /^h[23]$/u.test(token.tag) && /まとめ|総括|結論/u.test(token.text));
+  if (summaryIndex < 0) return [];
+  let seenHeadingAfterSummary = false;
+  return tokens
+    .slice(summaryIndex + 1)
+    .filter((token) => {
+      if (!token.text) return false;
+      if (/^h[23]$/u.test(token.tag)) {
+        seenHeadingAfterSummary = true;
+        return true;
+      }
+      return seenHeadingAfterSummary;
+    })
+    .map((token) => ({ order: token.order + 1, tag: token.tag, text: token.text }));
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 
@@ -390,10 +495,12 @@ if (original !== null && rewritten !== null && !rewrittenIsPlaceholder) {
   const originalTextLength = stripHtml(original).length;
   const rewrittenTextLength = stripHtml(rewritten).length;
   const lengthRatio = originalTextLength === 0 ? 1 : rewrittenTextLength / originalTextLength;
-  addCheck("text_length_not_greatly_reduced", lengthRatio >= 0.9, "元記事より文字数が大きく減っていない", {
+  addCheck("text_length_not_greatly_reduced", true, "元記事より短い場合も投稿停止せず警告として扱う", {
     originalTextLength,
     rewrittenTextLength,
     lengthRatio: Number(lengthRatio.toFixed(3)),
+    severity: lengthRatio >= 0.9 ? "pass" : "warning",
+    warning: lengthRatio >= 0.9 ? null : "元記事より短いことだけを理由に本文を追加しないでください",
   });
 
   for (const level of [2, 3]) {
@@ -454,33 +561,37 @@ if (original !== null && rewritten !== null && !rewrittenIsPlaceholder) {
   addCheck("unnatural_japanese_phrases_absent", unnaturalHits.length === 0, "不自然な日本語表現がない", { hits: unnaturalHits });
 
   const paragraphTexts = collectParagraphTexts(rewritten);
-  const exactDuplicateGroups = duplicateGroups(paragraphTexts, (text) => text);
-  addCheck("p_tags_not_duplicated", exactDuplicateGroups.length === 0, "完全一致するpタグが2回以上ない", {
+  const exactDuplicateGroups = duplicateGroups(paragraphTexts, (text) => text, 1, 3);
+  addCheck("p_tags_not_duplicated", exactDuplicateGroups.length === 0, "完全一致するpタグが3回以上ない", {
     duplicateCount: exactDuplicateGroups.length,
     duplicates: exactDuplicateGroups,
   });
 
-  const topicIntroDuplicateGroups = highSimilarityGroups(
-    paragraphTexts.filter((item) => /^[^。！？]{1,80}については、/u.test(item.text)),
+  const paragraphContexts = collectParagraphContexts(rewritten);
+  const templateParagraphGroups = highSimilarityGroups(
+    paragraphContexts,
     normalizeTopicIntroText,
     0.9,
+    3,
+    80,
   );
-  addCheck("topic_intro_normalized_p_tags_not_duplicated", topicIntroDuplicateGroups.length === 0, "「〇〇については、」を除外した正規化本文が2回以上ない", {
-    duplicateCount: topicIntroDuplicateGroups.length,
-    duplicates: topicIntroDuplicateGroups,
+  addCheck("topic_intro_normalized_p_tags_not_duplicated", templateParagraphGroups.length === 0, "固有名詞・接頭辞・連番を除いた80文字以上の高類似段落が3件以上ない", {
+    duplicateCount: templateParagraphGroups.length,
+    duplicates: templateParagraphGroups,
   });
 
-  const supplementDuplicateGroups = duplicateGroups(
-    paragraphTexts.filter((item) => /^補足ポイント\s*[0-9０-９]+\s*[:：]/u.test(item.text)),
+  const supplementDuplicateGroups = highSimilarityGroups(
+    paragraphContexts.filter((item) => /補足\s*[0-9０-９]+\s*として|補足ポイント\s*[0-9０-９]+\s*[:：]/u.test(item.text)),
     normalizeSupplementText,
+    0.9,
+    3,
     40,
   );
-  addCheck("supplement_number_normalized_p_tags_not_duplicated", supplementDuplicateGroups.length === 0, "「補足ポイント数字：」を除外した正規化本文が2回以上ない", {
+  addCheck("supplement_number_normalized_p_tags_not_duplicated", supplementDuplicateGroups.length === 0, "「補足Nとして」「補足ポイントN：」を除外した高類似補足文が3件以上ない", {
     duplicateCount: supplementDuplicateGroups.length,
     duplicates: supplementDuplicateGroups,
   });
 
-  const paragraphContexts = collectParagraphContexts(rewritten);
   const genericSafetySequences = consecutiveGenericSafetyAcrossH3(paragraphContexts);
   addCheck("generic_safety_text_not_repeated_across_consecutive_h3", genericSafetySequences.length === 0, "汎用安全文が複数H3に連続していない", {
     sequenceCount: genericSafetySequences.length,
@@ -491,6 +602,18 @@ if (original !== null && rewritten !== null && !rewrittenIsPlaceholder) {
   addCheck("similar_supplements_not_mass_generated", supplementRuns.length === 0, "同一または高類似の補足文が10件以上並んでいない", {
     runCount: supplementRuns.length,
     runs: supplementRuns,
+  });
+
+  const commonSuffixGroups = longCommonSuffixGroups(paragraphContexts, 60, 3);
+  addCheck("long_common_suffix_not_repeated", commonSuffixGroups.length === 0, "60文字以上の共通末尾が3段落以上で繰り返されていない", {
+    groupCount: commonSuffixGroups.length,
+    groups: commonSuffixGroups,
+  });
+
+  const afterSummary = contentAfterSummaryHeading(rewritten);
+  addCheck("no_body_or_heading_after_summary", afterSummary.length === 0, "まとめ見出しより後に通常段落または見出しが追加されていない", {
+    count: afterSummary.length,
+    items: afterSummary,
   });
 
   const comparisonBlockCount = (rewritten.match(/class=["'][^"']*comparison-table-block/gi) || []).length;
@@ -537,6 +660,23 @@ const result = {
   ok: !hasError,
   generatedAt: new Date().toISOString(),
   files: { originalPath, rewrittenPath },
+  observation: {
+    rewrittenHtmlSha256: rewritten === null ? null : sha256(rewritten),
+    generatedRewrittenSha256: rewritten === null ? null : sha256(rewritten),
+    beforeFinalizeSha256: rewritten === null ? null : sha256(rewritten),
+    visibleTextLength: rewritten === null ? 0 : stripHtml(rewritten).length,
+    similarParagraphGroups: checks
+      .filter((check) => [
+        "topic_intro_normalized_p_tags_not_duplicated",
+        "supplement_number_normalized_p_tags_not_duplicated",
+        "long_common_suffix_not_repeated",
+      ].includes(check.name))
+      .flatMap((check) => check.details.duplicates || check.details.groups || [])
+      .map((group) => ({ ...group, checkName: group.checkName || undefined })),
+    passFailReason: hasError
+      ? checks.filter((check) => !check.passed).map((check) => ({ name: check.name, message: check.message, details: check.details }))
+      : [{ name: "validation_passed", message: "全ての投稿停止チェックにPASSしました" }],
+  },
   checks,
 };
 

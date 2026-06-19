@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rename, rm, writeFile, cp } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { decorateArticleHtml, loadArticleDecorationConfig, validateDecorations } from "./lib/article-decoration.mjs";
 
 const articleDir = process.argv[2] || "articles/sample-article";
@@ -12,6 +13,10 @@ const validationReportPath = join(articleDir, "decoration-validation-report.json
 const anchorReportPath = join(articleDir, "anchor-link-report.json");
 const source = await readFile(rewrittenPath, "utf8");
 const config = await loadArticleDecorationConfig("rules/article-decoration.json", articleDir);
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 async function copyAnchorReportFromTemp(tempAnchorReportPath) {
   const report = JSON.parse(await readFile(tempAnchorReportPath, "utf8"));
@@ -58,6 +63,11 @@ try {
   const atomicPath = join(articleDir, `.rewritten.${process.pid}.tmp`);
   await writeFile(atomicPath, await readFile(tempRewrittenPath, "utf8"), "utf8");
   await rename(atomicPath, rewrittenPath);
+  decorated.report.observation = {
+    generatedRewrittenSha256: sha256(source),
+    beforeFinalizeSha256: sha256(source),
+    afterFinalizeSha256: sha256(await readFile(tempRewrittenPath, "utf8")),
+  };
   await writeFile(runReportPath, `${JSON.stringify(decorated.report, null, 2)}\n`, "utf8");
   await writeFile(validationReportPath, `${JSON.stringify(decorationValidationReport, null, 2)}\n`, "utf8");
   await copyAnchorReportFromTemp(join(tempArticleDir, "anchor-link-report.json"));
