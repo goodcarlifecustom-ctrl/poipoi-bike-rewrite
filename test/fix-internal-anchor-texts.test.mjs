@@ -18,7 +18,9 @@ async function tempArticle(prefix, html) {
 test("fixes internal anchor text to match target heading text", async () => {
   const dir = await tempArticle(
     "anchor-fix-",
-    `<div class="cap_box" data-poipoi-decoration="article-toc"><div>この記事でわかること</div><ul><li><a href="#sell-method-comparison"><span>出張買取・一括査定・店舗持ち込みの違い</span></a></li></ul></div>\n<h2 id="sell-method-comparison">ネオクラシックバイクを売る方法の比較</h2>`,
+    `<div class="cap_box" data-poipoi-decoration="article-toc"><div>この記事でわかること</div><ul><li><a href="#sell-method-comparison"><span>出張買取・一括査定・店舗持ち込みの違い</span></a></li></ul></div>\n<!-- wp:heading {"anchor":"sell-method-comparison"} -->
+<h2 id="sell-method-comparison">ネオクラシックバイクを売る方法の比較</h2>
+<!-- /wp:heading -->`,
   );
 
   const { stdout } = await execFileAsync(process.execPath, [scriptPath, dir]);
@@ -100,7 +102,7 @@ test("fails when article toc li has no anchor tag", async () => {
     const report = JSON.parse(error.stdout);
     assert.equal(report.ok, false);
     assert.equal(report.emptyArticleTocItems.length, 1);
-    assert.equal(report.missingArticleTocLinks.length, 1);
+    assert.equal(report.missingArticleTocLinks.length, 0);
     return true;
   });
 });
