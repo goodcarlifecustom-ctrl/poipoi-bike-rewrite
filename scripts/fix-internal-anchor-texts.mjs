@@ -53,6 +53,47 @@ function collectTargets(documentFragment) {
 }
 
 function internalIdFromHref(href) { if (!href || !href.startsWith("#") || href === "#") return null; try { return decodeURIComponent(href.slice(1)); } catch { return href.slice(1); } }
+
+function validateSerializedAnchorSpec(html) {
+  const tocLinks = [];
+  const fragment = parse5.parseFragment(html);
+  walk(fragment, (node) => {
+    if (!isElement(node, "a") || !closest(node, isArticleToc)) return;
+    const href = getAttr(node, "href");
+    const id = internalIdFromHref(href);
+    if (id) tocLinks.push({ href, targetId: id, text: normalizeText(textContent(node)) });
+  });
+  const idCounts = new Map();
+  const headingBlocks = [];
+  for (const match of html.matchAll(/<!--\s*wp:heading\s*(\{[\s\S]*?\})?\s*-->\s*(<h([23])\b([\s\S]*?)>[\s\S]*?<\/h\3>)\s*<!--\s*\/wp:heading\s*-->/giu)) {
+    let anchor = "";
+    try { anchor = match[1] ? JSON.parse(match[1]).anchor || "" : ""; } catch { anchor = ""; }
+    const attrsText = match[4] || "";
+    const id = attrsText.match(/\bid\s*=\s*(["'])(.*?)\1/iu)?.[2] || "";
+    const text = normalizeText(match[2].replace(/<[^>]+>/gu, " "));
+    headingBlocks.push({ level: Number(match[3]), anchor, id, text });
+  }
+  for (const match of html.matchAll(/\bid\s*=\s*(["'])(.*?)\1/giu)) idCounts.set(match[2], (idCounts.get(match[2]) || 0) + 1);
+  const duplicateIds = [...idCounts.entries()].filter(([, count]) => count > 1).map(([id, count]) => ({ id, count }));
+  const h2ById = new Map(headingBlocks.filter((h) => h.level === 2 && h.id).map((h) => [h.id, h]));
+  const missingTargets = [];
+  const anchorMismatches = [];
+  const textMismatches = [];
+  const nonAsciiAnchorIds = [];
+  const unserializedTargetHeadings = [];
+  for (const link of tocLinks) {
+    const target = h2ById.get(link.targetId);
+    if (!target) { missingTargets.push(link); continue; }
+    if (target.anchor !== link.targetId || target.id !== link.targetId) anchorMismatches.push({ href: link.href, anchor: target.anchor, id: target.id });
+    if (link.text !== target.text) textMismatches.push({ href: link.href, linkText: link.text, headingText: target.text });
+  }
+  for (const id of idCounts.keys()) if (id.startsWith("sec-") && !/^sec-[0-9]{2,}$/u.test(id)) nonAsciiAnchorIds.push(id);
+  for (const link of tocLinks) {
+    if (html.includes(`id="${link.targetId}"`) && !h2ById.has(link.targetId)) unserializedTargetHeadings.push(link);
+  }
+  return { tocLinkCount: tocLinks.length, tocLinks, headingBlocks, duplicateIds, missingTargets, anchorMismatches, textMismatches, nonAsciiAnchorIds, unserializedTargetHeadings };
+}
+
 function isArticleToc(node) { return Boolean(node?.tagName) && (getAttr(node, "data-poipoi-decoration") === "article-toc" || (hasClass(node, "cap_box") && normalizeText(textContent(node)).includes(ARTICLE_TOC_TITLE))); }
 
 const html = await readFile(rewrittenPath, "utf8");
@@ -102,13 +143,16 @@ walk(fragment, (node) => {
 });
 
 const h2TargetCount = h2Targets.length;
-const missingArticleTocLinks = h2Targets.filter((h2) => !articleTocTargetIds.has(h2.id)).map(({ id, text }) => ({ id, text }));
+const missingArticleTocLinks = h2Targets.filter((h2) => /^sec-[0-9]{2,}$/u.test(h2.id) && !articleTocTargetIds.has(h2.id)).map(({ id, text }) => ({ id, text }));
 const noInternalAnchorsWithH2 = h2TargetCount > 0 && checkedAnchorLinks === 0;
-const ok = duplicateHeadingIds.length === 0 && missingTargetIds.length === 0 && invalidTargetIds.length === 0 && emptyAnchorTexts.length === 0 && emptyHeadingTexts.length === 0 && postFixMismatches.length === 0 && !noInternalAnchorsWithH2 && emptyArticleTocItems.length === 0 && missingArticleTocLinks.length === 0;
+const serialized = parse5.serialize(fragment);
+const specReport = validateSerializedAnchorSpec(serialized);
+const specOk = ["duplicateIds", "missingTargets", "anchorMismatches", "textMismatches", "nonAsciiAnchorIds", "unserializedTargetHeadings"].every((key) => specReport[key].length === 0);
+const ok = duplicateHeadingIds.length === 0 && missingTargetIds.length === 0 && invalidTargetIds.length === 0 && emptyAnchorTexts.length === 0 && emptyHeadingTexts.length === 0 && postFixMismatches.length === 0 && !noInternalAnchorsWithH2 && emptyArticleTocItems.length === 0 && missingArticleTocLinks.length === 0 && specOk;
 
-const report = { ok, articleDir, h2TargetCount, checkedAnchorLinks, articleTocLinkCount, missingArticleTocLinks, emptyArticleTocItems, matchedLinks, fixedLinks, missingTargetIds, duplicateHeadingIds, invalidTargetIds, emptyAnchorTexts, emptyHeadingTexts, postFixMismatches, fixes, finalJudgement: ok ? "PASS" : "FAIL" };
+const report = { ...specReport, ok, articleDir, h2TargetCount, checkedAnchorLinks, articleTocLinkCount, missingArticleTocLinks, emptyArticleTocItems, matchedLinks, fixedLinks, missingTargetIds, duplicateHeadingIds, invalidTargetIds, emptyAnchorTexts, emptyHeadingTexts, postFixMismatches, fixes, finalJudgement: ok ? "PASS" : "FAIL" };
 console.log(JSON.stringify(report, null, 2));
-if (ok) await writeFile(rewrittenPath, parse5.serialize(fragment), "utf8");
+if (ok) await writeFile(rewrittenPath, serialized, "utf8");
 await mkdir(articleDir, { recursive: true });
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 if (!ok) process.exitCode = 1;

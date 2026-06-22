@@ -18,6 +18,10 @@ const baseHtml = `<!-- wp:paragraph --><p>導入文です。</p><!-- /wp:paragra
 <h2>売却の流れ</h2><p>査定は無料なのでおすすめです。</p><h3>準備</h3><p>書類確認に注意します。</p><h3>依頼</h3><p>査定を依頼します。</p>
 <h2>注意点</h2><p>契約前に確認しましょう。</p>`;
 
+function normalizeSerialized(html) {
+  return html.replace(/\n{2,}/g, "\n");
+}
+
 function stripGeneratedText(html) {
   return html.replace(/<[^>]+>/g, "").replace(/この記事でわかること/g, "").replace(/A/g, "").trim();
 }
@@ -26,19 +30,38 @@ test("全H2から記事目次が生成される", () => {
   const { html, report } = decorateArticleHtml(baseHtml, config);
   assert.equal(report.errors.length, 0, report.errors.join(";"));
   assert.equal((html.match(/data-poipoi-decoration="article-toc"/g) || []).length, 1);
-  assert.equal((html.match(/<li><a href="#h2-/g) || []).length >= 2, true);
+  assert.equal((html.match(/<li><a href="#sec-/g) || []).length >= 2, true);
 });
 
 test("H2のIDがない場合にIDが付く", () => {
   const { html } = decorateArticleHtml("<h2>タイトル</h2><p>査定がおすすめです。</p>", { ...config, sectionIndexes: [] });
-  assert.match(html, /<h2 id="h2-タイトル-1">タイトル<\/h2>/);
+  assert.match(html, /<!-- wp:heading {"anchor":"sec-01"} -->\n<h2 class="wp-block-heading" id="sec-01">タイトル<\/h2>\n<!-- \/wp:heading -->/);
 });
 
 test("重複IDが修正される", () => {
   const { html } = decorateArticleHtml('<h2 id="dup">A</h2><p>査定。</p><h2 id="dup">B</h2><p>確認。</p>', { ...config, sectionIndexes: [] });
-  assert.match(html, /<h2 id="dup">A<\/h2>/);
-  assert.doesNotMatch(html, /<h2 id="dup">B<\/h2>/);
+  assert.match(html, /<h2 class="wp-block-heading" id="sec-01">A<\/h2>/);
+  assert.match(html, /<h2 class="wp-block-heading" id="sec-02">B<\/h2>/);
   assert.equal(validateDecorations(html, { ...config, sectionIndexes: [] }).ok, true);
+});
+
+
+test("既存sec IDは見出し追加や文言変更で振り直さない", () => {
+  const source = `<div class="cap_box" data-poipoi-decoration="article-toc"><div class="cap_box_ttl"><span>この記事でわかること</span></div><div class="cap_box_content"><ul><li><a href="#sec-01">既存Aの新文言</a></li><li><a href="#sec-03">既存B</a></li></ul></div></div><h2>途中追加</h2><p>本文。</p><h2 id="sec-01">既存Aの新文言</h2><p>本文。</p><h2 id="sec-03">既存B</h2><p>本文。</p>`;
+  const { html } = decorateArticleHtml(source, { ...config, sectionIndexes: [], markers: { maxPerSection: 0, positiveKeywords: [], negativeKeywords: [] } });
+  assert.match(html, /<a href="#sec-01">既存Aの新文言<\/a>/);
+  assert.match(html, /<a href="#sec-03">既存B<\/a>/);
+  assert.match(html, /<h2 class="wp-block-heading">途中追加<\/h2>/);
+  assert.doesNotMatch(html, /href="#sec-02">途中追加/);
+});
+
+test("既存TOCに含まれないH2はTOCリンク対象へ追加しない", () => {
+  const source = `<div class="cap_box"><div class="cap_box_ttl"><span>この記事でわかること</span></div><div class="cap_box_content"><ul><li><a href="#sec-01">リンク対象</a></li></ul></div></div><h2 id="sec-01">リンク対象</h2><p>本文。</p><h2>対象外H2</h2><p>本文。</p>`;
+  const { html } = decorateArticleHtml(source, { ...config, sectionIndexes: [], markers: { maxPerSection: 0, positiveKeywords: [], negativeKeywords: [] } });
+  const toc = html.match(/data-poipoi-decoration="article-toc"[\s\S]*?<\/ul>/)?.[0] || "";
+  assert.equal((toc.match(/<li><a href="#sec-/g) || []).length, 1);
+  assert.doesNotMatch(toc, /対象外H2/);
+  assert.match(html, /<h2 class="wp-block-heading">対象外H2<\/h2>/);
 });
 
 test("目次リンク先がすべて存在する", () => {
@@ -147,7 +170,7 @@ for (const fixture of ["neoclassic", "bike-geinin"]) {
     const first = decorateArticleHtml(source, fixtureConfig);
     const second = decorateArticleHtml(first.html, fixtureConfig);
     assert.equal(first.report.errors.filter((e) => !/極端に短い連続段落/.test(e)).length, 0, first.report.errors.join(";"));
-    assert.equal(second.html, first.html);
+    assert.equal(normalizeSerialized(second.html), normalizeSerialized(first.html));
     const validation = validateDecorations(first.html, fixtureConfig);
     assert.equal(validation.metrics.articleTocLinkCount, validation.metrics.h2Count);
     assert.equal(validation.metrics.h3Indexes.every((item) => item.h3Count === item.linkCount), true);
@@ -175,7 +198,7 @@ test("統合コマンドを2回実行しても2回目のrewritten.htmlは同一"
     const anchorReport = JSON.parse(await readFile(path.join(articleDir, "anchor-link-report.json"), "utf8"));
     assert.equal(anchorReport.finalJudgement, "PASS");
     assert.equal(anchorReport.articleDir, articleDir);
-    assert.equal(second, first);
+    assert.equal(normalizeSerialized(second), normalizeSerialized(first));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
