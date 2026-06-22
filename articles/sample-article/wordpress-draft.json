@@ -1,12 +1,14 @@
 {
   "ok": true,
-  "createdAt": "2026-06-19T03:18:11.378Z",
+  "operation": "updated",
+  "updatedExistingDraft": true,
+  "createdAt": "2026-06-22T05:24:33.516Z",
   "postType": "posts",
+  "slug": "ysp",
   "status": "draft",
-  "id": 29300,
+  "id": 29516,
   "title": "【YSPの評判・口コミって悪い？】買取も徹底調査しました！",
-  "editUrl": "https://poi-poi.co.jp/wp-admin/post.php?post=29300&action=edit",
-  "link": "https://poi-poi.co.jp/bike/?p=29300",
-  "previewUrl": "https://poi-poi.co.jp/bike/?p=29300",
-  "verifiedAt": "2026-06-19T03:41:02.717Z"
+  "editUrl": "https://poi-poi.co.jp/wp-admin/post.php?post=29516&action=edit",
+  "link": "https://poi-poi.co.jp/bike/?p=29516",
+  "previewUrl": "https://poi-poi.co.jp/bike/?p=29516"
 }

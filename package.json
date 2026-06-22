@@ -10,7 +10,8 @@
     "decorate": "node scripts/decorate-rewritten.mjs",
     "validate:decorations": "node scripts/validate-decorations.mjs",
     "finalize": "node scripts/finalize-article.mjs",
-    "fix-anchors": "node scripts/fix-internal-anchor-texts.mjs"
+    "fix-anchors": "node scripts/fix-internal-anchor-texts.mjs",
+    "verify:preview": "node scripts/verify-wordpress-preview.mjs"
   },
   "engines": {
     "node": ">=18"

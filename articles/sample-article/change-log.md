@@ -76,3 +76,33 @@
 - 更新前 `content.raw` SHA-256: 69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6。
 - 更新後 `content.raw` SHA-256: 69bb1e3dc10e9cc6cabca38b0eb369a999b7eda8d96a258d9eb3b5d62ee198e6。
 - 新規下書きは作成していない。既存公開記事は更新していない。下書きID 29300以外は変更していない。
+
+## 2026-06-22 本文内タイトル二重表示の再発防止対応
+
+- 対象記事一式で本文HTMLのH1混入を検証し、`articles/sample-article/rewritten.html` の `<h1>` が0件であることを確認した。`article.html` / `article-linked.html` / `article-decorated.html` は対象ディレクトリに存在しないため、存在する本文HTMLのみ検証対象とした。
+- 本文先頭は導入文から始まっており、投稿タイトル相当のH1/H2は存在しなかったため、削除した本文内タイトルはなし。
+- `scripts/validate-rewritten.mjs` に、`article.html` / `article-linked.html` / `article-decorated.html` / `rewritten.html` に `<h1>` が含まれる場合のFAIL、および本文冒頭の最初の見出しが投稿タイトルと同一またはほぼ同じ場合のFAILを追加した。
+- `scripts/create-wordpress-draft.mjs` から本文内H1を投稿タイトル候補にするフォールバックを削除し、WordPress送信予定の `content.raw` に `<h1>` が含まれる場合、および本文冒頭の最初の見出しが投稿タイトルと同一またはほぼ同じ場合は投稿を停止する検証を追加した。
+- `scripts/create-wordpress-draft.mjs` は同一記事の既存下書き（draft / pending / private）のみ更新対象にし、公開済み記事は更新しない。既存の `wordpress-draft.json` / `wordpress-draft-verification.json` の下書きIDも確認し、既存下書き更新を優先するようにした。
+- `npm run draft -- articles/sample-article` を実行し、既存下書きID 29516を更新した。ステータスは `draft`、下書きURLは `https://poi-poi.co.jp/bike/?p=29516`。
+- 投稿後にWordPress REST APIの `context=edit` で下書きID 29516を検証し、`content.raw` の `<h1>` は0件、`content.rendered` の `<h1>` も0件、ステータスは `draft` であることを `wordpress-draft-verification.json` に保存した。
+
+## 2026-06-22 プレビュー画面レンダリング確認の試行
+
+- `scripts/verify-wordpress-preview.mjs` を追加し、下書きプレビューURLをHTTP取得して、実際に返ったHTML内のH1/H2/H3、タイトル類似要素、禁止タイトル文言の有無をDOMベースで記録できるようにした。
+- `node scripts/verify-wordpress-preview.mjs articles/sample-article` を実行したが、下書きID 29516の未ログインプレビューURL `https://poi-poi.co.jp/bike/?p=29516` はHTTP 404を返し、実記事プレビューではなく404ページが返った。結果は `wordpress-preview-render-verification.json` に保存した。
+- 返却されたDOM上部の見出しは404ページの `<h1 class="c-ttl404">ページが見つかりませんでした。</h1>` のみで、下書き本文の実レンダリング確認は未完了。WordPressログイン済みブラウザセッション、または有効なpreview_nonce付きURLがない状態では、実際の下書きプレビュー画面でタイトルが1つだけかを完了判定できない。
+- 禁止文言「単気筒バイクおすすめ車種まとめ｜メリット・デメリットと乗り方、中古購入・買取査定のポイント」は、取得できたHTML内には存在しなかった。
+
+## 2026-06-22 プレビュー検証ステータス整理
+
+- 未ログイン状態の通常投稿URL `https://poi-poi.co.jp/bike/?p=29516` を実プレビューとして扱わないように、`scripts/verify-wordpress-preview.mjs` を修正した。`WP_PREVIEW_URL` が未指定、または `preview=true` を含まない場合は画面取得を開始せず、`INCONCLUSIVE_AUTH_REQUIRED` として記録する。
+- HTTP 401 / 403 / 404、または404/エラーテンプレートを検出した場合も記事本文のDOM検証には使わず、`visualRenderValidation: pending_manual` として扱う。404ページ内のH1/H2/H3は本文見出し結果に含めない。
+- `wordpress-preview-render-verification.json` は `codeValidation: passed`、`restApiValidation: passed`、`visualRenderValidation: pending_manual`、`reason: authenticated WordPress preview session unavailable` に整理した。
+- 現在の完了状態は「コードとREST APIの検証は完了、ログイン済みブラウザでの目視確認のみ未完了」。認証情報、Cookie、nonceはリポジトリ・ログ・JSONへ保存していない。
+
+## 2026-06-22 ユーザー手動目視確認の反映
+
+- ユーザーがWordPressへログインしたブラウザで下書きID 29516の実プレビューを手動確認済み。表示タイトル数は1、テーマ側の投稿タイトルのみ表示、本文内の重複タイトルなし、投稿タイトル直後は導入文、ステータスは `draft`。
+- `wordpress-preview-render-verification.json` を `VISUAL_RENDER_PASSED_MANUAL` / `visualRenderValidation: passed_manual` に更新した。
+- 追加のWordPress更新・下書き再送信は実施していない。認証情報、プレビューURLのnonce、Cookieはリポジトリ・ログ・JSONへ保存していない。

@@ -1,0 +1,31 @@
+{
+  "status": "VISUAL_RENDER_PASSED_MANUAL",
+  "codeValidation": "passed",
+  "restApiValidation": "passed",
+  "visualRenderValidation": "passed_manual",
+  "reason": "user confirmed authenticated WordPress draft preview renders exactly one title",
+  "checkedAt": "2026-06-22T06:13:06.857803Z",
+  "draftId": 29516,
+  "expectedTitle": "【YSPの評判・口コミって悪い？】買取も徹底調査しました！",
+  "previewUrl": null,
+  "httpStatus": null,
+  "finalUrl": null,
+  "pageLooksLikeDraft": true,
+  "titleCount": 1,
+  "matchingTitleElements": [],
+  "headings": [],
+  "forbiddenPhrasePresent": false,
+  "message": "ユーザーがWordPressログイン済みブラウザで下書きID 29516の実プレビューを手動確認済み。認証情報、preview nonce、Cookieは保存していません。",
+  "manualVerification": {
+    "verifiedBy": "user",
+    "method": "authenticated WordPress browser preview",
+    "displayedTitleCount": 1,
+    "onlyThemePostTitleDisplayed": true,
+    "duplicateTitleInBody": false,
+    "contentStartsAfterTitleWith": "導入文",
+    "postStatus": "draft",
+    "credentialsStored": false,
+    "previewNonceStored": false,
+    "cookiesStored": false
+  }
+}
