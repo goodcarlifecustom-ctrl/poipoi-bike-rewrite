@@ -11,6 +11,9 @@ const originalPath = path.join(articleDir, "original.html");
 const rewrittenPath = path.join(articleDir, "rewritten.html");
 const resultPath = path.join(articleDir, "validation-result.json");
 const requiredLinksPath = path.join("rules", "required-links.json");
+const bodyHtmlBasenames = ["article.html", "article-linked.html", "article-decorated.html", "rewritten.html"];
+const inputPath = path.join(articleDir, "input.md");
+const metaPath = path.join(articleDir, "original.meta.json");
 
 const checks = [];
 let hasError = false;
@@ -29,19 +32,74 @@ async function readOptional(filePath) {
   }
 }
 
-function stripHtml(html) {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, "")
+function decodeHtmlEntities(text) {
+  return String(text || "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
+    .replace(/&#039;/g, "'");
+}
+
+function stripHtml(html) {
+  return decodeHtmlEntities(html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, "")
-    .trim();
+    .trim());
+}
+
+function stripHtmlSpaced(html) {
+  return decodeHtmlEntities(String(html || "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim());
+}
+
+function normalizeHeadingForTitleCompare(value) {
+  return stripHtmlSpaced(value)
+    .replace(/[【】「」『』（）()［］\[\]〈〉《》]/g, "")
+    .replace(/[｜|:：・,，、。.!！?？\-ー〜～\s]/g, "")
+    .toLowerCase();
+}
+
+function titleSimilarity(a, b) {
+  const left = normalizeHeadingForTitleCompare(a);
+  const right = normalizeHeadingForTitleCompare(b);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const shorter = left.length < right.length ? left : right;
+  const longer = left.length < right.length ? right : left;
+  if (longer.includes(shorter) && shorter.length / longer.length >= 0.72) return shorter.length / longer.length;
+  const set = new Set(shorter);
+  let common = 0;
+  for (const ch of longer) if (set.has(ch)) common += 1;
+  return common / longer.length;
+}
+
+function firstHeadingText(html) {
+  const match = String(html || "").match(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/i);
+  return match ? stripHtmlSpaced(match[2]) : "";
+}
+
+async function articleTitleForValidation() {
+  const input = await readOptional(inputPath);
+  const inputTitle = input?.match(/^記事タイトル：\s*(.+)$/m)?.[1]?.trim();
+  if (inputTitle) return inputTitle;
+  const metaText = await readOptional(metaPath);
+  if (metaText) {
+    try {
+      const meta = JSON.parse(metaText);
+      if (typeof meta.title === "string" && stripHtmlSpaced(meta.title)) return stripHtmlSpaced(meta.title);
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
 function countHeadings(html, level) {
@@ -474,6 +532,23 @@ if (rewritten !== null && requiredLinks.length > 0) {
 
 addCheck("original_exists", original !== null, `${originalPath} が存在する`);
 addCheck("rewritten_exists", rewritten !== null, `${rewrittenPath} が存在する`);
+
+const draftTitleForValidation = await articleTitleForValidation();
+for (const basename of bodyHtmlBasenames) {
+  const filePath = path.join(articleDir, basename);
+  const html = await readOptional(filePath);
+  if (html === null) continue;
+  const h1Count = (html.match(/<h1\b/gi) || []).length;
+  addCheck(`${basename}_has_no_h1`, h1Count === 0, `${basename} の本文HTMLに<h1>が含まれていない`, { filePath, h1Count });
+  const heading = firstHeadingText(html);
+  const similarity = draftTitleForValidation ? titleSimilarity(heading, draftTitleForValidation) : 0;
+  addCheck(`${basename}_first_heading_not_title`, !(heading && draftTitleForValidation && similarity >= 0.9), `${basename} の本文冒頭の最初の見出しが投稿タイトルと同一またはほぼ同じではない`, {
+    filePath,
+    firstHeading: heading || null,
+    draftTitle: draftTitleForValidation || null,
+    similarity: Number(similarity.toFixed(3)),
+  });
+}
 
 const rewrittenIsPlaceholder = rewritten !== null && isPlaceholderRewritten(rewritten);
 

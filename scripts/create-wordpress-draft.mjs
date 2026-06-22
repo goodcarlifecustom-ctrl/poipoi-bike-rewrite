@@ -15,6 +15,7 @@ const inputPath = path.join(articleDir, "input.md");
 const metaPath = path.join(articleDir, "original.meta.json");
 const outputPath = path.join(articleDir, "wordpress-draft.json");
 const preflightPath = path.join(articleDir, "wp-rest-preflight.json");
+const verificationPath = path.join(articleDir, "wordpress-draft-verification.json");
 
 function requiredEnv(name) {
   const value = process.env[name];
@@ -33,8 +34,67 @@ async function readOptional(filePath) {
   }
 }
 
+async function readJsonOptional(filePath) {
+  const text = await readOptional(filePath);
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
 function stripTags(value) {
-  return value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  return String(value || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+function normalizeHeadingText(value) {
+  return stripTags(value)
+    .replace(/[【】「」『』（）()［］\[\]〈〉《》]/g, "")
+    .replace(/[｜|:：・,，、。.!！?？\-ー〜～\s]/g, "")
+    .toLowerCase();
+}
+
+function similarity(a, b) {
+  const left = normalizeHeadingText(a);
+  const right = normalizeHeadingText(b);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const shorter = left.length < right.length ? left : right;
+  const longer = left.length < right.length ? right : left;
+  if (longer.includes(shorter) && shorter.length / longer.length >= 0.72) return shorter.length / longer.length;
+  const set = new Set(shorter);
+  let common = 0;
+  for (const ch of longer) {
+    if (set.has(ch)) common += 1;
+  }
+  return common / longer.length;
+}
+
+function firstHeadingText(html) {
+  const match = String(html || "").match(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/i);
+  return match ? stripTags(match[2]) : "";
+}
+
+function validateContentForDraft(content, title) {
+  const h1Matches = String(content || "").match(/<h1\b/gi) || [];
+  if (h1Matches.length > 0) {
+    throw new Error(`WordPress送信予定のcontent.rawに<h1>が${h1Matches.length}件含まれているため投稿を停止します。`);
+  }
+
+  const heading = firstHeadingText(content);
+  if (heading && title && similarity(heading, title) >= 0.9) {
+    throw new Error(`本文冒頭の最初の見出しが投稿タイトルと同一またはほぼ同じため投稿を停止します: ${heading}`);
+  }
+}
+
+function slugFromMeta(meta) {
+  if (typeof meta?.slug === "string" && meta.slug.trim()) return meta.slug.trim();
+  const source = extractSourceUrl(meta);
+  if (!source) return "";
+  try {
+    const url = new URL(source);
+    const last = url.pathname.replace(/\/+$/, "").split("/").pop() || "";
+    return last.replace(/\.html?$/i, "");
+  } catch {
+    return "";
+  }
 }
 
 async function getTitle(rewrittenHtml) {
@@ -51,9 +111,6 @@ async function getTitle(rewrittenHtml) {
       // タイトル取得に失敗した場合は次の候補を使う。
     }
   }
-
-  const h1Match = rewrittenHtml.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
-  if (h1Match?.[1] && stripTags(h1Match[1])) return stripTags(h1Match[1]);
 
   return "リライト記事 下書き";
 }
@@ -106,6 +163,7 @@ if (!/^draft|pending|private$/i.test(status)) {
 }
 
 const title = validateDraftTitle(await getTitle(content));
+validateContentForDraft(content, title);
 const endpoint = endpointFor(restRoot, postType);
 const preflight = await preflightWordPressDraft({
   restRoot,
@@ -119,10 +177,10 @@ if (!preflight.ok) {
 }
 const postEndpoint = endpointFor(restRoot, preflight.restBase);
 
-async function postJson(url, body, headers) {
+async function requestJson(method, url, body, headers) {
   try {
     const response = await fetch(url, {
-      method: "POST",
+      method,
       headers,
       body,
     });
@@ -135,10 +193,10 @@ async function postJson(url, body, headers) {
       const headerConfig = Object.entries(headers)
         .map(([name, value]) => `header = "${String(`${name}: ${value}`).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`)
         .join("\n");
-      await writeFile(bodyPath, body, "utf8");
+      await writeFile(bodyPath, body || "", "utf8");
       await writeFile(configPath, `${headerConfig}\n`, "utf8");
       try {
-        const { stdout } = await execFileAsync("curl", [
+        const args = [
           "--config",
           configPath,
           "--location",
@@ -147,13 +205,11 @@ async function postJson(url, body, headers) {
           "--max-time",
           "60",
           "--request",
-          "POST",
-          "--data-binary",
-          `@${bodyPath}`,
-          "--write-out",
-          "\n%{http_code}",
-          url,
-        ], { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 });
+          method,
+        ];
+        if (body !== undefined) args.push("--data-binary", `@${bodyPath}`);
+        args.push("--write-out", "\n%{http_code}", url);
+        const { stdout } = await execFileAsync("curl", args, { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 });
         const marker = stdout.lastIndexOf("\n");
         const text = marker >= 0 ? stdout.slice(0, marker) : stdout;
         const statusCode = marker >= 0 ? Number(stdout.slice(marker + 1)) : 0;
@@ -167,11 +223,68 @@ async function postJson(url, body, headers) {
   }
 }
 
-const response = await postJson(postEndpoint, JSON.stringify({ title, content, status }), {
+async function postJson(url, body, headers) {
+  return requestJson("POST", url, body, headers);
+}
+
+async function putJson(url, body, headers) {
+  return requestJson("PUT", url, body, headers);
+}
+
+async function getJson(url, headers) {
+  const result = await requestJson("GET", url, undefined, headers);
+  let json = null;
+  try { json = result.text ? JSON.parse(result.text) : null; } catch { json = null; }
+  return { ...result, json };
+}
+
+async function fetchPostById(endpoint, id, headers) {
+  if (!id) return null;
+  const url = new URL(`./${id}`, `${endpoint.replace(/\/+$/, "")}/`);
+  url.searchParams.set("context", "edit");
+  const result = await getJson(url.toString(), headers);
+  if (!result.ok || !result.json) return null;
+  const post = result.json;
+  return ["draft", "pending", "private"].includes(String(post?.status || "").toLowerCase()) ? post : null;
+}
+
+async function findExistingEditableDraft(endpoint, slug, headers) {
+  const candidates = [];
+  const currentOutput = await readJsonOptional(outputPath);
+  const verification = await readJsonOptional(verificationPath);
+  if (currentOutput?.id) candidates.push(currentOutput.id);
+  if (verification?.draftId) candidates.push(verification.draftId);
+  for (const id of [...new Set(candidates)]) {
+    const post = await fetchPostById(endpoint, id, headers);
+    if (post) return post;
+  }
+
+  if (!slug) return null;
+  for (const draftStatus of ["draft", "pending", "private"]) {
+    const url = new URL(endpoint);
+    url.searchParams.set("slug", slug);
+    url.searchParams.set("status", draftStatus);
+    url.searchParams.set("context", "edit");
+    url.searchParams.set("per_page", "10");
+    const result = await getJson(url.toString(), headers);
+    if (!result.ok || !Array.isArray(result.json)) continue;
+    const found = result.json.find((post) => ["draft", "pending", "private"].includes(String(post?.status || "").toLowerCase()));
+    if (found) return found;
+  }
+  return null;
+}
+
+const authHeaders = {
   authorization: buildAuthHeader(username, applicationPassword),
   "content-type": "application/json",
   accept: "application/json",
-});
+};
+const existingDraft = await findExistingEditableDraft(postEndpoint, slugFromMeta(meta), authHeaders);
+const payload = JSON.stringify({ title, content, status });
+const response = existingDraft
+  ? await putJson(new URL(`./${existingDraft.id}`, `${postEndpoint.replace(/\/+$/, "")}/`).toString(), payload, authHeaders)
+  : await postJson(postEndpoint, payload, authHeaders);
+const operation = existingDraft ? "updated" : "created";
 
 const responseText = response.text;
 let responseJson;
@@ -189,8 +302,11 @@ if (!response.ok) {
 
 const draft = {
   ok: true,
+  operation,
+  updatedExistingDraft: Boolean(existingDraft),
   createdAt: new Date().toISOString(),
   postType,
+  slug: responseJson.slug || existingDraft?.slug || slugFromMeta(meta) || null,
   status: responseJson.status || status,
   id: responseJson.id,
   title,
@@ -202,6 +318,7 @@ const draft = {
 await mkdir(articleDir, { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(draft, null, 2)}\n`, "utf8");
 console.log(`WordPress下書き結果を保存しました: ${outputPath}`);
+console.log(`処理種別: ${draft.operation}`);
 console.log(`下書きID: ${draft.id}`);
 console.log(`編集URL: ${draft.editUrl}`);
 if (draft.previewUrl) console.log(`プレビューURL: ${draft.previewUrl}`);
