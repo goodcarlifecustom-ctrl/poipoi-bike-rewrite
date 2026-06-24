@@ -1,4 +1,173 @@
 {
+  "tocLinkCount": 10,
+  "tocLinks": [
+    {
+      "href": "#sec-01",
+      "targetId": "sec-01",
+      "text": "そもそもYSPってどういうお店？"
+    },
+    {
+      "href": "#sec-02",
+      "targetId": "sec-02",
+      "text": "YSPは出張買取が出来ない"
+    },
+    {
+      "href": "#sec-03",
+      "targetId": "sec-03",
+      "text": "YSPの評判は悪い？良い？"
+    },
+    {
+      "href": "#sec-04",
+      "targetId": "sec-04",
+      "text": "YSPの悪い評判といい評判を集めてみました"
+    },
+    {
+      "href": "#sec-05",
+      "targetId": "sec-05",
+      "text": "YSP買取・下取りと買取専門店の違い"
+    },
+    {
+      "href": "#sec-06",
+      "targetId": "sec-06",
+      "text": "YSPでバイクを買取して貰うのはオススメできない？"
+    },
+    {
+      "href": "#sec-07",
+      "targetId": "sec-07",
+      "text": "YSPで査定を受ける前に高く売るコツ"
+    },
+    {
+      "href": "#sec-08",
+      "targetId": "sec-08",
+      "text": "YSPでバイクを売る前の注意点"
+    },
+    {
+      "href": "#sec-09",
+      "targetId": "sec-09",
+      "text": "YSP 買取に関するよくある質問"
+    },
+    {
+      "href": "#sec-10",
+      "targetId": "sec-10",
+      "text": "まとめ：YSPは下取り相談向き、高く売るなら買取専門店も比較しよう"
+    }
+  ],
+  "headingBlocks": [
+    {
+      "level": 2,
+      "anchor": "sec-01",
+      "id": "sec-01",
+      "text": "そもそもYSPってどういうお店？"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-02",
+      "id": "sec-02",
+      "text": "YSPは出張買取が出来ない"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-03",
+      "id": "sec-03",
+      "text": "YSPの評判は悪い？良い？"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-04",
+      "id": "sec-04",
+      "text": "YSPの悪い評判といい評判を集めてみました"
+    },
+    {
+      "level": 3,
+      "anchor": "good-review",
+      "id": "good-review",
+      "text": "YSPのいい評判"
+    },
+    {
+      "level": 3,
+      "anchor": "bad-review",
+      "id": "bad-review",
+      "text": "YSPの悪い評判"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-05",
+      "id": "sec-05",
+      "text": "YSP買取・下取りと買取専門店の違い"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-06",
+      "id": "sec-06",
+      "text": "YSPでバイクを買取して貰うのはオススメできない？"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-07",
+      "id": "sec-07",
+      "text": "YSPで査定を受ける前に高く売るコツ"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-08",
+      "id": "sec-08",
+      "text": "YSPでバイクを売る前の注意点"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-09",
+      "id": "sec-09",
+      "text": "YSP 買取に関するよくある質問"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-yspはバイクを買取してくれる-9-1",
+      "id": "h3-yspはバイクを買取してくれる-9-1",
+      "text": "YSPはバイクを買取してくれる？"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-yspの下取りは高い-9-2",
+      "id": "h3-yspの下取りは高い-9-2",
+      "text": "YSPの下取りは高い？"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-ヤマハ以外のバイクも査定できる-9-3",
+      "id": "h3-ヤマハ以外のバイクも査定できる-9-3",
+      "text": "ヤマハ以外のバイクも査定できる？"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-yspと買取専門店はどちらが高く売れる-9-4",
+      "id": "h3-yspと買取専門店はどちらが高く売れる-9-4",
+      "text": "YSPと買取専門店はどちらが高く売れる？"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-ローンが残っているバイクは売れる-9-5",
+      "id": "h3-ローンが残っているバイクは売れる-9-5",
+      "text": "ローンが残っているバイクは売れる？"
+    },
+    {
+      "level": 3,
+      "anchor": "h3-yspは出張買取に対応している-9-6",
+      "id": "h3-yspは出張買取に対応している-9-6",
+      "text": "YSPは出張買取に対応している？"
+    },
+    {
+      "level": 2,
+      "anchor": "sec-10",
+      "id": "sec-10",
+      "text": "まとめ：YSPは下取り相談向き、高く売るなら買取専門店も比較しよう"
+    }
+  ],
+  "duplicateIds": [],
+  "missingTargets": [],
+  "anchorMismatches": [],
+  "textMismatches": [],
+  "nonAsciiAnchorIds": [],
+  "unserializedTargetHeadings": [],
   "ok": true,
   "articleDir": "articles/sample-article",
   "h2TargetCount": 10,

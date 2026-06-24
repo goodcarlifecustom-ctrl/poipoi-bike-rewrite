@@ -110,7 +110,7 @@ test("fails when article toc li has no anchor tag", async () => {
 test("create-wordpress-draft runs finalize before reading rewritten content", async () => {
   const source = await readFile(path.resolve("scripts/create-wordpress-draft.mjs"), "utf8");
   const finalizeIndex = source.indexOf('scripts/finalize-article.mjs');
-  const readIndex = source.indexOf('const content = await readFile(rewrittenPath, "utf8")');
+  const readIndex = source.indexOf('const content = stripArticleFrontMatter(await readFile(rewrittenPath, "utf8"))');
   assert.notEqual(finalizeIndex, -1);
   assert.notEqual(readIndex, -1);
   assert.equal(finalizeIndex < readIndex, true);

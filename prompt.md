@@ -34,6 +34,8 @@ https://poi-poi.co.jp/bike/〇〇
 * 外部リンクは見出し内には設置しない。
 * 外部リンクには target="_blank" と rel="noopener noreferrer" を必ず付ける。
 * rules/decoration-rule.md に従って、SWELL向けの装飾を適用する。
+* 完成記事本文はGutenbergのブロックマークアップ形式で作成する。段落・見出し・リスト・画像・表・引用・コードはWordPress標準ブロックとして出力し、特殊HTMLだけをwp:htmlにする。
+* 既存ブロックコメントは二重にラップせず、Markdown構文を完成記事に残さない。
 * WordPressには既存公開記事を更新せず、新規下書きとして作成する。
 * 認証情報の値そのものは絶対に出力しない。
 * .env と node_modules/ は絶対にコミットしない。

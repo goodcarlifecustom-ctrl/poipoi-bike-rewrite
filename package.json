@@ -11,6 +11,7 @@
     "validate:decorations": "node scripts/validate-decorations.mjs",
     "finalize": "node scripts/finalize-article.mjs",
     "fix-anchors": "node scripts/fix-internal-anchor-texts.mjs",
+    "convert:gutenberg": "node scripts/convert-gutenberg-blocks.mjs",
     "verify:preview": "node scripts/verify-wordpress-preview.mjs"
   },
   "engines": {

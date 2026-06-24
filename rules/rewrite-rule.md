@@ -83,3 +83,13 @@
 - 認証情報を出力しない。
 - `.env` と `node_modules/` をコミットしない。
 - 既存公開記事を更新しない。
+
+## Gutenbergブロック出力ルール
+
+- 完成記事の本文は、通常HTMLやMarkdownではなくWordPressブロックエディタ（Gutenberg）のシリアライズ済みブロックマークアップで出力する。
+- 段落、見出し、リスト、画像、表、引用、コード、区切り線などは可能な限りWordPress標準ブロック（`wp:paragraph`、`wp:heading`、`wp:list`、`wp:image`、`wp:table`、`wp:quote`、`wp:code`、`wp:separator`）を使う。
+- WordPress標準ブロックへ安全に変換できないSWELL独自装飾、広告コード、ショートコード、特殊HTMLのみ `wp:html` ブロックにする。記事全体を1つの `wp:html` ブロックにしない。
+- 既存のGutenbergブロックコメントがある部分は二重にラップしない。
+- 記事タイトルはWordPress投稿タイトルで管理するため、本文内に不要なH1を追加しない。
+- Markdown見出し、Markdown画像記法、Markdown箇条書きは完成記事に残さない。
+- 最終化時に `scripts/lib/gutenberg-blocks.mjs` の共通変換処理でGutenberg形式へ正規化されるため、個別記事ごとに独自の変換処理を書かない。
