@@ -11,3 +11,7 @@ articles/**/decoration-validation-report.json
 articles/**/validation-result.json
 articles/**/rewritten.decorated.html
 articles/**/.rewritten.*.tmp
+
+node_modules/
+anchor-link-report.json
+articles/**/wordpress-draft-*.rendered.html

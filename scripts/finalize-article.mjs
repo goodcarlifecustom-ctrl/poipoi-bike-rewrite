@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { decorateArticleHtml, loadArticleDecorationConfig, validateDecorations } from "./lib/article-decoration.mjs";
+import { toGutenbergBlocks, validateGutenbergBlocks } from "./lib/gutenberg-blocks.mjs";
 
 const articleDir = process.argv[2] || "articles/sample-article";
 const rewrittenPath = join(articleDir, "rewritten.html");
@@ -60,13 +61,21 @@ try {
     throw new Error(`internal anchor validation failed: ${anchorFix.stderr || anchorFix.stdout}`);
   }
 
+  const finalizedHtml = toGutenbergBlocks(await readFile(tempRewrittenPath, "utf8"));
+  const gutenbergValidation = validateGutenbergBlocks(finalizedHtml);
+  if (!gutenbergValidation.ok) {
+    throw new Error(`Gutenbergブロック検証に失敗しました: ${gutenbergValidation.errors.join("; ")}`);
+  }
+  await writeFile(tempRewrittenPath, finalizedHtml, "utf8");
+
   const atomicPath = join(articleDir, `.rewritten.${process.pid}.tmp`);
-  await writeFile(atomicPath, await readFile(tempRewrittenPath, "utf8"), "utf8");
+  await writeFile(atomicPath, finalizedHtml, "utf8");
   await rename(atomicPath, rewrittenPath);
   decorated.report.observation = {
     generatedRewrittenSha256: sha256(source),
     beforeFinalizeSha256: sha256(source),
-    afterFinalizeSha256: sha256(await readFile(tempRewrittenPath, "utf8")),
+    afterFinalizeSha256: sha256(finalizedHtml),
+    gutenbergBlocks: true,
   };
   await writeFile(runReportPath, `${JSON.stringify(decorated.report, null, 2)}\n`, "utf8");
   await writeFile(validationReportPath, `${JSON.stringify(decorationValidationReport, null, 2)}\n`, "utf8");

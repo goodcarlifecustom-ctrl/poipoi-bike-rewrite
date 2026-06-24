@@ -1,6 +1,7 @@
 import * as parse5 from "parse5";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { toGutenbergBlocks } from "./gutenberg-blocks.mjs";
 
 const DECORATION_ATTR = "data-poipoi-decoration";
 const DEFAULT_CONFIG = {
@@ -24,7 +25,8 @@ export async function loadArticleDecorationConfig(configPath = "rules/article-de
 
 export function decorateArticleHtml(html, config = {}) {
   const cfg = mergeConfig(DEFAULT_CONFIG, config);
-  const document = parse5.parseFragment(stripHeadingBlockComments(String(html)), { sourceCodeLocationInfo: false });
+  const preservedBlocks = preserveComplexGutenbergBlocks(String(html));
+  const document = parse5.parseFragment(stripWordPressBlockComments(preservedBlocks.html), { sourceCodeLocationInfo: false });
   const report = emptyRunReport();
   const articleTocPlan = collectArticleTocPlan(document, cfg);
   unwrapExistingMarkers(document, report);
@@ -36,7 +38,7 @@ export function decorateArticleHtml(html, config = {}) {
   buildSectionIndexes(document, cfg, report);
   wrapConfiguredLists(document, cfg, report);
   applyMarkers(document, cfg, report);
-  const output = serializeHeadingBlocks(parse5.serialize(document));
+  const output = preservedBlocks.restore(toGutenbergBlocks(serializeHeadingBlocks(parse5.serialize(document))));
   const validation = validateDecorations(output, cfg);
   report.errors = validation.errors;
   Object.assign(report, validation.metrics);
@@ -240,8 +242,77 @@ function wrapTextInMarker(node, target, negative) { for (let i = 0; i < childNod
 function markerSectionStats(root) { const eligible = []; const unmarked = []; let marked = 0; for (const section of headingRanges(root)) { const paragraphs = eligibleParagraphsForSection(root, section).filter((p) => textContent(p).trim()); if (paragraphs.length === 0) continue; eligible.push(section); const count = section.nodes.flatMap((node) => descendants(node, isMarkerNode)).length; if (count > 0) marked += 1; else unmarked.push({ id: section.id, title: section.title }); } return { eligibleSectionCount: eligible.length, markedSectionCount: marked, unmarkedSections: unmarked }; }
 function idExists(ids, href) { return href?.startsWith("#") && ids.includes(href.slice(1)); }
 
+function preserveComplexGutenbergBlocks(html) {
+  const ranges = complexGutenbergBlockRanges(html);
+  if (ranges.length === 0) return { html, restore: (output) => output };
+  let transformed = "";
+  let cursor = 0;
+  const blocks = [];
+  ranges.forEach((range, index) => {
+    transformed += html.slice(cursor, range.start);
+    blocks.push(html.slice(range.start, range.end));
+    transformed += `<div data-poipoi-preserved-wp-block="${index}"></div>`;
+    cursor = range.end;
+  });
+  transformed += html.slice(cursor);
+  return {
+    html: transformed,
+    restore(output) {
+      const restored = blocks.reduce((current, block, index) => {
+        const escaped = String(index).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const wrapped = new RegExp(`<!--\\s*wp:html\\s*-->\\s*<div data-poipoi-preserved-wp-block="${escaped}"><\\/div>\\s*<!--\\s*\\/wp:html\\s*-->`, "u");
+        return current.replace(wrapped, block);
+      }, output);
+      return html.endsWith("\n") ? restored : restored.replace(/\n$/u, "");
+    },
+  };
+}
+
+function complexGutenbergBlockRanges(html) {
+  const ranges = [];
+  const stack = [];
+  const re = new RegExp("<!--\\s*(\\/?wp:[^\\s>]+)(?:\\s+(\\{[\\s\\S]*?\\}))?\\s*-->", "gu");
+  for (const match of html.matchAll(re)) {
+    const token = match[1];
+    const name = token.replace(/^\//, "");
+    if (!token.startsWith("/")) {
+      stack.push({ name, start: match.index, complex: isComplexBlock(name, match[2]) });
+    } else {
+      const last = stack.pop();
+      if (last?.name === name) {
+        const complex = last.complex || stack.some((item) => item.complex);
+        const end = match.index + match[0].length;
+        const blockText = html.slice(last.start, end);
+        if (complex && stack.length === 0 && !isGeneratedDecorationBlock(blockText)) ranges.push({ start: last.start, end });
+      }
+    }
+  }
+  return ranges;
+}
+
+function isGeneratedDecorationBlock(blockText) {
+  return /data-poipoi-decoration=/u.test(blockText);
+}
+
+function isComplexBlock(fullName, attrsJson) {
+  const name = fullName.replace(/^wp:/, "");
+  if (!["paragraph", "heading", "list", "list-item"].includes(name)) return true;
+  if (!attrsJson) return false;
+  try {
+    const attrs = JSON.parse(attrsJson);
+    const allowed = name === "heading" ? new Set(["level", "anchor"]) : name === "list" ? new Set(["ordered", "start", "reversed"]) : new Set();
+    return Object.keys(attrs).some((key) => !allowed.has(key));
+  } catch {
+    return true;
+  }
+}
+
+function stripWordPressBlockComments(html) {
+  return String(html).replace(/[ \t]*<!--\s*\/?wp:[^>]+-->[ \t]*(?:\r?\n)?/gu, "");
+}
+
 function stripHeadingBlockComments(html) {
-  return String(html).replace(/[ \t]*<!--\s*\/?wp:heading(?:\s+[^>]*)?\s*-->[ \t]*(?:\r?\n)?/gu, "");
+  return stripWordPressBlockComments(html);
 }
 
 function serializeHeadingBlocks(html) {

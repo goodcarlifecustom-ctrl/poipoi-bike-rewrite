@@ -6,6 +6,7 @@ import os from "node:os";
 import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
 import { endpointFor, extractSourceUrl, normalizeRestRoot, preflightWordPressDraft, readMeta, restRootFromApiUrl, validateDraftTitle } from "./lib/wp-draft-preflight.mjs";
+import { stripArticleFrontMatter, validateGutenbergBlocks } from "./lib/gutenberg-blocks.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -139,8 +140,12 @@ if (finalize.status !== 0) {
   throw new Error(`記事の完成処理がFAILのためWordPress下書き作成を停止しました: ${finalize.stderr || finalize.stdout}`);
 }
 
-const content = await readFile(rewrittenPath, "utf8");
+const content = stripArticleFrontMatter(await readFile(rewrittenPath, "utf8"));
 if (!content.trim()) throw new Error(`${rewrittenPath} が空です。`);
+const gutenbergValidation = validateGutenbergBlocks(content);
+if (!gutenbergValidation.ok) {
+  throw new Error(`WordPress送信予定のcontent.rawがGutenberg形式として不正です: ${gutenbergValidation.errors.join("; ")}`);
+}
 
 const username = requiredEnv("WP_USERNAME");
 const applicationPassword = requiredEnv("WP_APPLICATION_PASSWORD");

@@ -14,7 +14,7 @@ const config = {
   markers: { maxPerSection: 2, positiveKeywords: ["おすすめ", "査定"], negativeKeywords: ["注意", "確認"] },
 };
 
-const baseHtml = `<!-- wp:paragraph --><p>導入文です。</p><!-- /wp:paragraph -->
+const baseHtml = `<p>導入文です。</p>
 <h2>売却の流れ</h2><p>査定は無料なのでおすすめです。</p><h3>準備</h3><p>書類確認に注意します。</p><h3>依頼</h3><p>査定を依頼します。</p>
 <h2>注意点</h2><p>契約前に確認しましょう。</p>`;
 
@@ -23,7 +23,7 @@ function normalizeSerialized(html) {
 }
 
 function stripGeneratedText(html) {
-  return html.replace(/<[^>]+>/g, "").replace(/この記事でわかること/g, "").replace(/A/g, "").trim();
+  return html.replace(/<!--\s*\/?wp:[^>]+-->/g, "").replace(/<[^>]+>/g, "").replace(/この記事でわかること/g, "").replace(/A/g, "").replace(/\s+/g, "").trim();
 }
 
 test("全H2から記事目次が生成される", () => {
@@ -114,7 +114,7 @@ test("長い段落が分割され本文テキストは変わらない", () => {
   const text = "一文目です。二文目です。三文目です。四文目です。五文目です。";
   const { html, report } = decorateArticleHtml(`<h2>A</h2><p>${text}</p>`, { ...config, sectionIndexes: [], paragraph: { ...config.paragraph, maxChars: 20, maxSentences: 2 }, markers: { maxPerSection: 0, positiveKeywords: [], negativeKeywords: [] } });
   assert.equal(report.splitParagraphCount, 1);
-  assert.equal(stripGeneratedText(html), text);
+  assert.equal(stripGeneratedText(html), text.replace(/\s+/g, ""));
 });
 
 test("既存マーカーが解除されてから再適用される", () => {
