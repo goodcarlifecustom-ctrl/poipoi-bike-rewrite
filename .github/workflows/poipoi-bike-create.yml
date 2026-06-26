@@ -1,0 +1,52 @@
+name: Poipoi Bike Create
+
+on:
+  workflow_dispatch:
+    inputs:
+      gsc_start_date:
+        description: Search Console start date (YYYY-MM-DD)
+        required: false
+        type: string
+      gsc_end_date:
+        description: Search Console end date (YYYY-MM-DD)
+        required: false
+        type: string
+      gsc_row_limit:
+        description: Search Console row limit
+        required: false
+        default: "25000"
+        type: string
+
+jobs:
+  fetch-gsc-keywords:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL }}
+      GSC_START_DATE: ${{ inputs.gsc_start_date }}
+      GSC_END_DATE: ${{ inputs.gsc_end_date }}
+      GSC_ROW_LIMIT: ${{ inputs.gsc_row_limit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch Search Console keyword data
+        run: npm run gsc:keyword -- --output=artifacts/gsc-keyword-data.json
+
+      - name: Upload Search Console keyword data
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-keyword-data
+          path: artifacts/gsc-keyword-data.json
+          if-no-files-found: error

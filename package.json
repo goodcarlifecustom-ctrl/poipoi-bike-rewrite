@@ -12,12 +12,14 @@
     "finalize": "node scripts/finalize-article.mjs",
     "fix-anchors": "node scripts/fix-internal-anchor-texts.mjs",
     "convert:gutenberg": "node scripts/convert-gutenberg-blocks.mjs",
-    "verify:preview": "node scripts/verify-wordpress-preview.mjs"
+    "verify:preview": "node scripts/verify-wordpress-preview.mjs",
+    "gsc:keyword": "node scripts/fetch-gsc-keyword-data.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "googleapis": "^173.0.0",
     "parse5": "^7.3.0"
   }
 }
