@@ -15,3 +15,8 @@ articles/**/.rewritten.*.tmp
 node_modules/
 anchor-link-report.json
 articles/**/wordpress-draft-*.rendered.html
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
